@@ -221,7 +221,7 @@ k.scene("menu", () => {
   ]);
 
   k.add([
-    k.text("CAMPANHA DE 3 NÍVEIS", { size: isMobile ? 14 : 18 }),
+    k.text("CONCLUA OS 3 NÍVEIS", { size: isMobile ? 14 : 18 }),
     k.pos(k.center().x, isMobile ? 150 : 200),
     k.anchor("center"),
     k.color(255, 165, 0),
@@ -238,7 +238,7 @@ k.scene("menu", () => {
   ]);
 
   k.add([
-    k.text("INICIAR CAMPANHA", { size: isMobile ? 14 : 18 }),
+    k.text("INICIAR", { size: isMobile ? 14 : 18 }),
     k.pos(k.center().x, isMobile ? 220 : 280),
     k.anchor("center"),
     k.color(76, 175, 80),
