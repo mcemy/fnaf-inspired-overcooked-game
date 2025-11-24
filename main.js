@@ -177,6 +177,33 @@ const audioContext = {
   levelComplete: new Audio("/audio/level-complete.wav"),
 };
 
+let audioUnlocked = false;
+
+function unlockAudio() {
+  if (audioUnlocked) return;
+
+  Object.values(audioContext).forEach((audio) => {
+    if (!audio) return;
+
+    audio
+      .play()
+      .then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+      })
+      .catch(() => {});
+  });
+
+  audioUnlocked = true;
+  window.removeEventListener("pointerdown", unlockAudio);
+  window.removeEventListener("keydown", unlockAudio);
+  window.removeEventListener("touchstart", unlockAudio);
+}
+
+window.addEventListener("pointerdown", unlockAudio);
+window.addEventListener("keydown", unlockAudio);
+window.addEventListener("touchstart", unlockAudio);
+
 // Configure audio
 Object.values(audioContext).forEach((audio) => {
   if (audio) {
