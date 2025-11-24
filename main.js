@@ -14,13 +14,12 @@ let currentK = null;
 function handleOrientationChange() {
   isPortrait = window.innerHeight > window.innerWidth;
 
-  if (isMobile && gameStarted && currentK) {
-    // Force landscape only when game starts
-    if (isPortrait) {
-      showOrientationWarning();
-    } else {
-      hideOrientationWarning();
-    }
+  if (!isMobile) return;
+
+  if (isPortrait) {
+    showOrientationWarning();
+  } else {
+    hideOrientationWarning();
   }
 }
 
@@ -69,6 +68,7 @@ function hideOrientationWarning() {
 
 window.addEventListener("orientationchange", handleOrientationChange);
 window.addEventListener("resize", handleOrientationChange);
+handleOrientationChange();
 
 let mobileInput = {
   x: 0,
@@ -174,9 +174,7 @@ window.addEventListener("load", () => {
 
 // ==================== AUDIO SETUP ====================
 const audioContext = {
-  levelComplete: new Audio(
-    "https://cdn.pixabay.com/download/audio/2021/08/04/audio_d1d1dc5cd8.mp3?filename=success-bell-6476.mp3"
-  ),
+  levelComplete: new Audio("/audio/level-complete.wav"),
 };
 
 // Configure audio
@@ -201,6 +199,8 @@ currentK = k;
 
 // ==================== MENU SCENE ====================
 k.scene("menu", () => {
+  gameStarted = false;
+
   if (isMobile && isPortrait) {
     showOrientationWarning();
   } else {
@@ -440,6 +440,18 @@ k.scene(
       "indicator",
     ]);
 
+    // ==================== GAME STATE ====================
+    const RECIPES_NEEDED = 6;
+    const currentLevel = levelData.level;
+    const currentDifficulty = levelData.difficulty;
+    let score = 0;
+    let combo = 0;
+    let gameTime = levelData.maxTime;
+    let orders = [];
+    let nearestStation = null;
+    let completedRecipes = 0;
+    let levelComplete = false;
+
     // ==================== UI ====================
     const uiSize = isMobile ? 14 : 18;
 
@@ -477,18 +489,6 @@ k.scene(
       k.anchor("center"),
       k.z(100),
     ]);
-
-    // Game state
-    let score = 0;
-    let combo = 0;
-    let gameTime = levelData.maxTime;
-    let orders = [];
-    let nearestStation = null;
-    let completedRecipes = 0;
-    const RECIPES_NEEDED = 6;
-    const currentLevel = levelData.level;
-    const currentDifficulty = levelData.difficulty;
-    let levelComplete = false;
 
     // ==================== RECIPES ====================
     const recipes = [
