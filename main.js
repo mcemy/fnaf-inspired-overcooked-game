@@ -220,54 +220,40 @@ k.scene("menu", () => {
     k.anchor("center"),
   ]);
 
-  const levelSelect = k.add([
-    k.text("SELECIONE O NÍVEL:", { size: isMobile ? 14 : 18 }),
+  k.add([
+    k.text("CAMPANHA DE 3 NÍVEIS", { size: isMobile ? 14 : 18 }),
     k.pos(k.center().x, isMobile ? 150 : 200),
     k.anchor("center"),
     k.color(255, 165, 0),
   ]);
 
-  const levels = [
-    { name: "NÍVEL 1 - INICIANTE", difficulty: "easy", time: 180 },
-    { name: "NÍVEL 2 - NORMAL", difficulty: "normal", time: 150 },
-    { name: "NÍVEL 3 - DIFÍCIL", difficulty: "hard", time: 120 },
-  ];
+  // Um único botão para iniciar a campanha
+  const startBtn = k.add([
+    k.rect(isMobile ? 220 : 300, isMobile ? 50 : 60),
+    k.pos(k.center().x, isMobile ? 220 : 280),
+    k.anchor("center"),
+    k.area(),
+    k.color(100, 100, 150),
+    k.outline(3, k.rgb(255, 165, 0)),
+  ]);
 
-  levels.forEach((level, i) => {
-    const buttonY = (isMobile ? 200 : 270) + i * (isMobile ? 50 : 60);
-    const btn = k.add([
-      k.rect(isMobile ? 200 : 280, isMobile ? 40 : 50),
-      k.pos(k.center().x, buttonY),
-      k.anchor("center"),
-      k.area(),
-      k.color(100, 100, 150),
-      k.outline(2, k.rgb(255, 165, 0)),
-      "levelBtn",
-      { levelNum: i + 1, difficulty: level.difficulty, time: level.time },
-    ]);
+  k.add([
+    k.text("INICIAR CAMPANHA", { size: isMobile ? 14 : 18 }),
+    k.pos(k.center().x, isMobile ? 220 : 280),
+    k.anchor("center"),
+    k.color(76, 175, 80),
+  ]);
 
-    k.add([
-      k.text(level.name, { size: isMobile ? 12 : 16 }),
-      k.pos(k.center().x, buttonY),
-      k.anchor("center"),
-      k.z(11),
-    ]);
+  startBtn.onClick(() => {
+    k.go("game", { level: 1, difficulty: "easy", maxTime: 180 });
+  });
 
-    btn.onClick(() => {
-      k.go("game", {
-        level: i + 1,
-        difficulty: level.difficulty,
-        maxTime: level.time,
-      });
-    });
+  startBtn.onHover(() => {
+    startBtn.color = k.rgb(150, 150, 200);
+  });
 
-    btn.onHover(() => {
-      btn.color = k.rgb(150, 150, 200);
-    });
-
-    btn.onHoverEnd(() => {
-      btn.color = k.rgb(100, 100, 150);
-    });
+  startBtn.onHoverEnd(() => {
+    startBtn.color = k.rgb(100, 100, 150);
   });
 
   const instructions = [
@@ -285,11 +271,21 @@ k.scene("menu", () => {
   instructions.forEach((line, i) => {
     k.add([
       k.text(line, { size: isMobile ? 9 : 11 }),
-      k.pos(k.center().x, (isMobile ? 400 : 520) + i * (isMobile ? 15 : 18)),
+      k.pos(k.center().x, (isMobile ? 300 : 370) + i * (isMobile ? 15 : 18)),
       k.anchor("center"),
       k.z(1),
     ]);
   });
+
+  k.onKeyPress("space", () =>
+    k.go("game", { level: 1, difficulty: "easy", maxTime: 180 })
+  );
+  k.onClick(() => k.go("game", { level: 1, difficulty: "easy", maxTime: 180 }));
+  if (isMobile) {
+    k.onTouchStart(() =>
+      k.go("game", { level: 1, difficulty: "easy", maxTime: 180 })
+    );
+  }
 });
 
 // ==================== GAME SCENE ====================
@@ -1156,14 +1152,33 @@ k.scene("levelcomplete", (data) => {
       k.color(255, 255, 100),
     ]);
 
-    k.add([
-      k.text(isMobile ? "Toque para continuar" : "ESPAÇO - Continuar", {
-        size: isMobile ? 14 : 16,
-      }),
-      k.pos(k.center().x, k.height() - (isMobile ? 80 : 100)),
+    // Delay automático de 3 segundos antes de passar pro próximo nível
+    k.wait(3, () => {
+      k.go("game", {
+        level: nextLevel,
+        difficulty: nextLevel === 2 ? "normal" : "hard",
+        maxTime: nextLevel === 2 ? 150 : 120,
+      });
+    });
+
+    const countdownText = k.add([
+      k.text("3", { size: isMobile ? 32 : 48 }),
+      k.pos(k.center().x, isMobile ? 320 : 420),
       k.anchor("center"),
+      k.color(255, 100, 100),
     ]);
 
+    let countdown = 3;
+    k.loop(1, () => {
+      countdown--;
+      if (countdown > 0) {
+        countdownText.text = countdown.toString();
+      } else {
+        countdownText.opacity = 0;
+      }
+    });
+
+    // Permitir pular o delay com ESPAÇO ou clique
     k.onKeyPress("space", () => {
       k.go("game", {
         level: nextLevel,
@@ -1190,16 +1205,45 @@ k.scene("levelcomplete", (data) => {
   } else {
     k.add([
       k.text("🏆 PARABÉNS! 🏆", { size: isMobile ? 20 : 24 }),
-      k.pos(k.center().x, isMobile ? 270 : 350),
+      k.pos(k.center().x, isMobile ? 120 : 150),
       k.anchor("center"),
       k.color(255, 215, 0),
     ]);
 
     k.add([
       k.text("VOCÊ COMPLETOU TODOS OS NÍVEIS!", { size: isMobile ? 12 : 16 }),
-      k.pos(k.center().x, isMobile ? 310 : 400),
+      k.pos(k.center().x, isMobile ? 180 : 240),
       k.anchor("center"),
     ]);
+
+    k.add([
+      k.text(`Pontuação Total: ${data.score}`, { size: isMobile ? 20 : 24 }),
+      k.pos(k.center().x, isMobile ? 230 : 300),
+      k.anchor("center"),
+      k.color(255, 165, 0),
+    ]);
+
+    // Delay automático de 5 segundos antes de voltar ao menu
+    k.wait(5, () => {
+      k.go("menu");
+    });
+
+    const countdownText = k.add([
+      k.text("5", { size: isMobile ? 32 : 48 }),
+      k.pos(k.center().x, isMobile ? 320 : 420),
+      k.anchor("center"),
+      k.color(255, 215, 0),
+    ]);
+
+    let countdown = 5;
+    k.loop(1, () => {
+      countdown--;
+      if (countdown > 0) {
+        countdownText.text = countdown.toString();
+      } else {
+        countdownText.opacity = 0;
+      }
+    });
 
     k.add([
       k.text(isMobile ? "Toque para menu" : "ESPAÇO - Menu principal", {
