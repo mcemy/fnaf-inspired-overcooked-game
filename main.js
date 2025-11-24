@@ -9,6 +9,8 @@ const isMobile =
 let isPortrait = window.innerHeight > window.innerWidth;
 let gameStarted = false;
 let currentK = null;
+const GAME_WIDTH = 800;
+const GAME_HEIGHT = 600;
 
 // Orientation change handler
 function handleOrientationChange() {
@@ -174,10 +176,38 @@ window.addEventListener("load", () => {
 
 // ==================== AUDIO SETUP ====================
 const audioContext = {
-  levelComplete: new Audio("/audio/level-complete.wav"),
+  bgm: new Audio("/audio/musica-de-fundo.mp3"),
+  start: new Audio("/audio/botao-iniciar.mp3"),
+  interaction: new Audio("/audio/interacao-item-forno.mp3"),
+  error: new Audio("/audio/erro-receita.mp3"),
+  levelComplete: new Audio("/audio/kids-cheering.mp3"),
 };
 
 let audioUnlocked = false;
+
+function playSfx(key, options = {}) {
+  const audio = audioContext[key];
+  if (!audio) return;
+
+  const { allowOverlap = true } = options;
+  const target = allowOverlap ? audio.cloneNode(true) : audio;
+  if (!allowOverlap) {
+    target.currentTime = 0;
+  }
+
+  target.volume = audio.volume ?? 0.6;
+  target.play().catch(() => {});
+}
+
+function startBackgroundMusic() {
+  const music = audioContext.bgm;
+  if (!music) return;
+  music.loop = true;
+  if (music.paused) {
+    music.currentTime = 0;
+    music.play().catch(() => {});
+  }
+}
 
 function unlockAudio() {
   if (audioUnlocked) return;
@@ -185,16 +215,18 @@ function unlockAudio() {
   Object.values(audioContext).forEach((audio) => {
     if (!audio) return;
 
-    audio
-      .play()
-      .then(() => {
-        audio.pause();
-        audio.currentTime = 0;
-      })
-      .catch(() => {});
+    const originalVolume = audio.volume;
+    audio.volume = 0;
+
+    audio.play().then(() => {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = originalVolume;
+    });
   });
 
   audioUnlocked = true;
+  startBackgroundMusic();
   window.removeEventListener("pointerdown", unlockAudio);
   window.removeEventListener("keydown", unlockAudio);
   window.removeEventListener("touchstart", unlockAudio);
@@ -207,18 +239,18 @@ window.addEventListener("touchstart", unlockAudio);
 // Configure audio
 Object.values(audioContext).forEach((audio) => {
   if (audio) {
-    audio.volume = 0.5;
+    audio.volume = audio === audioContext.bgm ? 0.35 : 0.8;
     audio.crossOrigin = "anonymous";
   }
 });
 
 // ==================== KAPLAY INIT ====================
 const k = kaplay({
-  width: isMobile ? Math.min(window.innerWidth, 800) : 800,
-  height: isMobile ? Math.min(window.innerHeight, 600) : 600,
+  width: GAME_WIDTH,
+  height: GAME_HEIGHT,
   background: [29, 29, 68],
-  letterbox: !isMobile,
-  stretch: isMobile,
+  letterbox: true,
+  stretch: false,
   global: false,
 });
 
@@ -227,6 +259,7 @@ currentK = k;
 // ==================== MENU SCENE ====================
 k.scene("menu", () => {
   gameStarted = false;
+  startBackgroundMusic();
 
   if (isMobile && isPortrait) {
     showOrientationWarning();
@@ -271,9 +304,12 @@ k.scene("menu", () => {
     k.color(76, 175, 80),
   ]);
 
-  startBtn.onClick(() => {
+  const startGame = () => {
+    playSfx("start", { allowOverlap: false });
     k.go("game", { level: 1, difficulty: "easy", maxTime: 180 });
-  });
+  };
+
+  startBtn.onClick(startGame);
 
   startBtn.onHover(() => {
     startBtn.color = k.rgb(150, 150, 200);
@@ -304,14 +340,10 @@ k.scene("menu", () => {
     ]);
   });
 
-  k.onKeyPress("space", () =>
-    k.go("game", { level: 1, difficulty: "easy", maxTime: 180 })
-  );
-  k.onClick(() => k.go("game", { level: 1, difficulty: "easy", maxTime: 180 }));
+  k.onKeyPress("space", startGame);
+  k.onClick(startGame);
   if (isMobile) {
-    k.onTouchStart(() =>
-      k.go("game", { level: 1, difficulty: "easy", maxTime: 180 })
-    );
+    k.onTouchStart(startGame);
   }
 });
 
@@ -327,6 +359,7 @@ k.scene(
 
     gameStarted = true;
     hideOrientationWarning();
+    startBackgroundMusic();
 
     // Background
     k.add([
@@ -684,6 +717,7 @@ k.scene(
         if (player.heldItem) {
           player.heldItem = null;
           updateHeldItemDisplay();
+        playSfx("error");
           k.add([
             k.text("🗑️", { size: feedbackSize }),
             k.pos(station.pos.add(0, -40)),
@@ -735,6 +769,7 @@ k.scene(
             score += pts;
             combo++;
             completedRecipes++;
+            playSfx("interaction");
 
             orders.splice(i, 1);
             player.heldItem = null;
@@ -772,6 +807,7 @@ k.scene(
 
         combo = 0;
         comboText.text = "COMBO: 0x";
+        playSfx("error");
         k.shake(10);
         k.add([
           k.text("ERRADO!", { size: feedbackSize + 4 }),
@@ -798,6 +834,7 @@ k.scene(
           station.timer = 5;
           player.heldItem = null;
           updateHeldItemDisplay();
+        playSfx("interaction");
 
           k.add([
             k.text("🔥", { size: feedbackSize }),
@@ -870,6 +907,7 @@ k.scene(
             return;
           }
 
+          playSfx("interaction");
           player.heldItem = {
             ingredients: [type],
             needsOven: false,
@@ -929,6 +967,7 @@ k.scene(
         }
 
         player.heldItem.ingredients.push(type);
+        playSfx("interaction");
 
         if (player.heldItem.ingredients.length >= 2) {
           player.heldItem.needsOven = true;
@@ -1135,11 +1174,7 @@ k.scene(
 
 // ==================== LEVEL COMPLETE SCENE ====================
 k.scene("levelcomplete", (data) => {
-  // Play completion sound
-  try {
-    audioContext.levelComplete.currentTime = 0;
-    audioContext.levelComplete.play().catch(() => {});
-  } catch (e) {}
+  playSfx("levelComplete", { allowOverlap: false });
 
   k.add([
     k.text("🎉 NÍVEL CONCLUÍDO! 🎉", { size: isMobile ? 28 : 36 }),
