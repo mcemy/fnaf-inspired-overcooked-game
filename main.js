@@ -184,6 +184,8 @@ const audioContext = {
 };
 
 let audioUnlocked = false;
+let audioUnlocking = false;
+const pendingSfxQueue = [];
 
 function playSfx(key, options = {}) {
   const audio = audioContext[key];
@@ -196,31 +198,62 @@ function playSfx(key, options = {}) {
   }
 
   target.volume = audio.volume ?? 0.6;
-  target.play().catch(() => {});
+  const playPromise = target.play();
+  if (playPromise && typeof playPromise.catch === "function") {
+    playPromise.catch(() => {
+      if (!audioUnlocked) {
+        pendingSfxQueue.push(() => playSfx(key, options));
+      }
+    });
+  }
 }
 
-function startBackgroundMusic() {
+function flushPendingSfx() {
+  if (!audioUnlocked || !pendingSfxQueue.length) return;
+  while (pendingSfxQueue.length) {
+    const retry = pendingSfxQueue.shift();
+    if (typeof retry === "function") {
+      retry();
+    }
+  }
+}
+
+function startBackgroundMusic(forceRestart = false) {
+  if (!audioContext.bgm) return;
+  if (!audioUnlocked && !forceRestart) return;
+
   const music = audioContext.bgm;
-  if (!music) return;
   music.loop = true;
-  if (music.paused) {
+
+  if (forceRestart) {
+    music.pause();
     music.currentTime = 0;
-    music.play().catch(() => {});
+  }
+
+  if (!music.paused && !forceRestart) return;
+
+  const playPromise = music.play();
+  if (playPromise && typeof playPromise.catch === "function") {
+    playPromise.catch(() => {});
   }
 }
 
 function unlockAudio() {
-  if (audioUnlocked) return;
+  if (audioUnlocked || audioUnlocking) return;
+  audioUnlocking = true;
 
-  Object.values(audioContext).forEach((audio) => {
-    if (!audio) return;
+  let unlockedAny = false;
+
+  const warmups = Object.values(audioContext).map((audio) => {
+    if (!audio) return Promise.resolve();
 
     const originalMuted = audio.muted;
     audio.muted = true;
 
-    audio
+    return audio
       .play()
       .then(() => {
+        unlockedAny = true;
         audio.pause();
         audio.currentTime = 0;
       })
@@ -230,11 +263,20 @@ function unlockAudio() {
       });
   });
 
-  audioUnlocked = true;
-  startBackgroundMusic();
-  window.removeEventListener("pointerdown", unlockAudio);
-  window.removeEventListener("keydown", unlockAudio);
-  window.removeEventListener("touchstart", unlockAudio);
+  Promise.all(warmups)
+    .then(() => {
+      if (unlockedAny) {
+        audioUnlocked = true;
+        startBackgroundMusic(true);
+        flushPendingSfx();
+        window.removeEventListener("pointerdown", unlockAudio);
+        window.removeEventListener("keydown", unlockAudio);
+        window.removeEventListener("touchstart", unlockAudio);
+      }
+    })
+    .finally(() => {
+      audioUnlocking = false;
+    });
 }
 
 window.addEventListener("pointerdown", unlockAudio);
@@ -264,7 +306,11 @@ currentK = k;
 // ==================== MENU SCENE ====================
 k.scene("menu", () => {
   gameStarted = false;
-  startBackgroundMusic();
+  if (audioUnlocked) {
+    startBackgroundMusic();
+  } else {
+    unlockAudio();
+  }
 
   if (isMobile && isPortrait) {
     showOrientationWarning();
@@ -365,7 +411,11 @@ k.scene(
 
     gameStarted = true;
     hideOrientationWarning();
-    startBackgroundMusic();
+    if (audioUnlocked) {
+      startBackgroundMusic();
+    } else {
+      unlockAudio();
+    }
 
     // Background
     k.add([
