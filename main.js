@@ -215,14 +215,19 @@ function unlockAudio() {
   Object.values(audioContext).forEach((audio) => {
     if (!audio) return;
 
-    const originalVolume = audio.volume;
-    audio.volume = 0;
+    const originalMuted = audio.muted;
+    audio.muted = true;
 
-    audio.play().then(() => {
-      audio.pause();
-      audio.currentTime = 0;
-      audio.volume = originalVolume;
-    });
+    audio
+      .play()
+      .then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+      })
+      .catch(() => {})
+      .finally(() => {
+        audio.muted = originalMuted;
+      });
   });
 
   audioUnlocked = true;
@@ -305,6 +310,7 @@ k.scene("menu", () => {
   ]);
 
   const startGame = () => {
+    unlockAudio();
     playSfx("start", { allowOverlap: false });
     k.go("game", { level: 1, difficulty: "easy", maxTime: 180 });
   };
@@ -717,7 +723,7 @@ k.scene(
         if (player.heldItem) {
           player.heldItem = null;
           updateHeldItemDisplay();
-        playSfx("error");
+          playSfx("error");
           k.add([
             k.text("🗑️", { size: feedbackSize }),
             k.pos(station.pos.add(0, -40)),
@@ -1045,7 +1051,8 @@ k.scene(
       for (let i = orders.length - 1; i >= 0; i--) {
         orders[i].timeLeft -= k.dt();
 
-        if (orders[i].timeLeft <= 0) {
+      if (orders[i].timeLeft <= 0) {
+        playSfx("error");
           orders.splice(i, 1);
           combo = 0;
           comboText.text = "COMBO: 0x";
