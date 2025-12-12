@@ -5,7 +5,7 @@
 Indie project blending **Overcooked-style cooperative cooking**  
 with retro visuals and the universe of **Five Nights at Freddy’s**.
 
-[![Play Demo](https://img.shields.io/badge/Play%20Demo-Vercel-7AA6A1?style=for-the-badge&logo=vercel&logoColor=white)](https://fnaf-pizza.vercel.app)
+[![Play](https://img.shields.io/badge/Play%20ON-Vercel-7AA6A1?style=for-the-badge&logo=vercel&logoColor=white)](https://fnaf-pizza.vercel.app)
 [![JavaScript](https://img.shields.io/badge/JavaScript-FFB3C1?style=for-the-badge&logo=javascript&logoColor=2E2A25)](#)
 [![HTML5](https://img.shields.io/badge/HTML5-FFE3EC?style=for-the-badge&logo=html5&logoColor=2E2A25)](#)
 [![CSS3](https://img.shields.io/badge/CSS3-7AA6A1?style=for-the-badge&logo=css3&logoColor=white)](#)
