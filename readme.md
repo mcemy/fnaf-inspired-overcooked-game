@@ -15,15 +15,6 @@ with retro visuals and the universe of **Five Nights at Freddy’s**.
 
 ---
 
-## About
-
-Indie project that blends the cooperative mechanics of **Overcooked** with retro aesthetics  
-and the world of **Five Nights at Freddy’s**.
-
-Freddy takes on the role of chef in a chaotic kitchen, where every round is a race against time.
-
----
-
 ## Features
 
 - Built with **Kaplay** game engine  
