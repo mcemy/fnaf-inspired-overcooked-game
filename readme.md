@@ -1,6 +1,6 @@
 <div align="center">
 
-# FNAF-Inspired Overcooked Game 🎮🍕
+# FNAF-Inspired Overcooked Game 
 
 Indie project blending **Overcooked-style cooperative cooking**  
 with retro visuals and the universe of **Five Nights at Freddy’s**.
