@@ -293,11 +293,12 @@ Object.values(audioContext).forEach((audio) => {
 
 // ==================== KAPLAY INIT ====================
 const k = kaplay({
+  canvas: document.getElementById("game-canvas"),
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
   background: [29, 29, 68],
   letterbox: true,
-  stretch: true,
+  stretch: false,
   crisp: true,
   font: "sans-serif",
   global: false,
@@ -620,6 +621,12 @@ k.scene(
         points: 100,
       },
       {
+        name: "Queijo Duplo",
+        ingredients: ["dough", "sauce", "cheese", "cheese"],
+        time: 45,
+        points: 140,
+      },
+      {
         name: "Bacon",
         ingredients: ["dough", "sauce", "cheese", "pepperoni"],
         time: 50,
@@ -639,16 +646,19 @@ k.scene(
       },
     ];
 
-    // Adjust difficulty
+    // Adjust difficulty - tempo diminui a cada nível
     let baseOrderTime = 45;
     let maxOrders = 3;
+    let spawnInterval = 10;
 
     if (currentDifficulty === "normal") {
-      baseOrderTime = 40;
+      baseOrderTime = 30; // Nível 2: 30s por receita
       maxOrders = 3;
+      spawnInterval = 8;
     } else if (currentDifficulty === "hard") {
-      baseOrderTime = 35;
+      baseOrderTime = 20; // Nível 3: 20s por receita (muito rápido!)
       maxOrders = 4;
+      spawnInterval = 6;
     }
 
     // ==================== ORDERS ====================
@@ -665,7 +675,7 @@ k.scene(
     }
 
     generateOrder();
-    k.loop(10, generateOrder);
+    k.loop(spawnInterval, generateOrder);
 
     // ==================== MOVEMENT ====================
     k.onUpdate(() => {
