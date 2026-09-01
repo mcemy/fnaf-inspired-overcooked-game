@@ -3,7 +3,7 @@ import kaplay from "kaplay";
 // ==================== MOBILE DETECTION & ORIENTATION ====================
 const isMobile =
   /Android|webOS|iPhone|iPad|iPot|BlackBerry|IEMobile|Opera Mini/i.test(
-    navigator.userAgent
+    navigator.userAgent,
   ) || window.innerWidth < 768;
 
 let isPortrait = window.innerHeight > window.innerWidth;
@@ -297,7 +297,9 @@ const k = kaplay({
   height: GAME_HEIGHT,
   background: [29, 29, 68],
   letterbox: true,
-  stretch: false,
+  stretch: true,
+  crisp: true,
+  font: "sans-serif",
   global: false,
 });
 
@@ -319,29 +321,29 @@ k.scene("menu", () => {
   }
 
   k.add([
-    k.text("🍕 FNAF PIZZA KITCHEN 🐻", { size: isMobile ? 24 : 32 }),
-    k.pos(k.center().x, isMobile ? 60 : 80),
+    k.text("🍕 FNAF PIZZA KITCHEN 🐻", { size: isMobile ? 32 : 36 }),
+    k.pos(k.center().x, isMobile ? 55 : 65),
     k.anchor("center"),
     k.color(255, 165, 0),
   ]);
 
   k.add([
-    k.text("Estilo Overcooked!", { size: isMobile ? 16 : 20 }),
-    k.pos(k.center().x, isMobile ? 95 : 130),
+    k.text("Estilo Overcooked!", { size: isMobile ? 20 : 22 }),
+    k.pos(k.center().x, isMobile ? 95 : 110),
     k.anchor("center"),
   ]);
 
   k.add([
-    k.text("CONCLUA OS 3 NÍVEIS", { size: isMobile ? 14 : 18 }),
-    k.pos(k.center().x, isMobile ? 150 : 200),
+    k.text("CONCLUA OS 3 NÍVEIS", { size: isMobile ? 18 : 20 }),
+    k.pos(k.center().x, isMobile ? 135 : 155),
     k.anchor("center"),
     k.color(255, 165, 0),
   ]);
 
   // Um único botão para iniciar a campanha
   const startBtn = k.add([
-    k.rect(isMobile ? 220 : 300, isMobile ? 50 : 60),
-    k.pos(k.center().x, isMobile ? 220 : 280),
+    k.rect(isMobile ? 260 : 320, isMobile ? 55 : 65),
+    k.pos(k.center().x, isMobile ? 200 : 235),
     k.anchor("center"),
     k.area(),
     k.color(100, 100, 150),
@@ -349,8 +351,8 @@ k.scene("menu", () => {
   ]);
 
   k.add([
-    k.text("INICIAR", { size: isMobile ? 14 : 18 }),
-    k.pos(k.center().x, isMobile ? 220 : 280),
+    k.text("INICIAR", { size: isMobile ? 22 : 24 }),
+    k.pos(k.center().x, isMobile ? 200 : 235),
     k.anchor("center"),
     k.color(76, 175, 80),
   ]);
@@ -371,13 +373,16 @@ k.scene("menu", () => {
     startBtn.color = k.rgb(100, 100, 150);
   });
 
+  k.add([
+    k.text("COMO JOGAR:", { size: isMobile ? 18 : 20 }),
+    k.pos(k.center().x, isMobile ? 275 : 310),
+    k.anchor("center"),
+    k.color(255, 255, 0),
+  ]);
+
   const instructions = [
-    "",
-    "COMO JOGAR:",
-    "",
     isMobile ? "🕹️ Joystick - Mover" : "WASD - Mover Freddy",
     isMobile ? "⚡ Botão Verde - Ação" : "ESPAÇO - Pegar/Usar estação",
-    "",
     "1. Complete pelo menos 6 receitas antes do tempo acabar",
     "2. Cada nível tem diferentes dificuldades",
     "3. Quanto mais rápido, melhor sua pontuação!",
@@ -385,8 +390,8 @@ k.scene("menu", () => {
 
   instructions.forEach((line, i) => {
     k.add([
-      k.text(line, { size: isMobile ? 9 : 11 }),
-      k.pos(k.center().x, (isMobile ? 300 : 370) + i * (isMobile ? 15 : 18)),
+      k.text(line, { size: isMobile ? 15 : 17 }),
+      k.pos(k.center().x, (isMobile ? 310 : 350) + i * (isMobile ? 24 : 26)),
       k.anchor("center"),
       k.z(1),
     ]);
@@ -441,10 +446,10 @@ k.scene(
     if (isMobile) {
       // Layout otimizado para mobile - 2 linhas
       stations = [
-        { x: 60, y: 90, type: "dough", icon: "📦", name: "Massa" },
+        { x: 60, y: 90, type: "dough", icon: "🫓", name: "Massa" },
         { x: 130, y: 90, type: "sauce", icon: "🍅", name: "Molho" },
         { x: 200, y: 90, type: "cheese", icon: "🧀", name: "Queijo" },
-        { x: 270, y: 90, type: "pepperoni", icon: "🥓", name: "Peper" },
+        { x: 270, y: 90, type: "pepperoni", icon: "🥓", name: "Bacon" },
         { x: 340, y: 90, type: "mushroom", icon: "🍄", name: "Cogu" },
         { x: 60, y: 200, type: "oven", icon: "🔥", name: "Forno 1" },
         { x: 130, y: 200, type: "oven", icon: "🔥", name: "Forno 2" },
@@ -453,10 +458,10 @@ k.scene(
       ];
     } else {
       stations = [
-        { x: 100, y: 120, type: "dough", icon: "📦", name: "Massa" },
+        { x: 100, y: 120, type: "dough", icon: "🫓", name: "Massa" },
         { x: 220, y: 120, type: "sauce", icon: "🍅", name: "Molho" },
         { x: 340, type: "cheese", y: 120, icon: "🧀", name: "Queijo" },
-        { x: 460, y: 120, type: "pepperoni", icon: "🥓", name: "Pepperoni" },
+        { x: 460, y: 120, type: "pepperoni", icon: "🥓", name: "Bacon" },
         { x: 580, y: 120, type: "mushroom", icon: "🍄", name: "Cogumelo" },
         { x: 100, y: 350, type: "oven", icon: "🔥", name: "Forno 1" },
         { x: 220, y: 350, type: "oven", icon: "🔥", name: "Forno 2" },
@@ -493,7 +498,7 @@ k.scene(
       ]);
 
       k.add([
-        k.text(s.name, { size: isMobile ? 8 : 10 }),
+        k.text(s.name, { size: isMobile ? 12 : 13 }),
         k.pos(s.x, s.y + stationSize / 2 - 8),
         k.anchor("center"),
         k.z(6),
@@ -522,13 +527,13 @@ k.scene(
       k.circle(playerSize * 0.375),
       k.pos(player.pos.x, player.pos.y - 5),
       k.anchor("center"),
-      k.color(139, 69, 19),
+      k.color(0, 0, 0),
       k.z(11),
       "playerHead",
     ]);
 
     k.add([
-      k.text("FREDDY", { size: isMobile ? 8 : 10 }),
+      k.text("FREDDY", { size: isMobile ? 11 : 12 }),
       k.pos(player.pos.x, player.pos.y + playerSize / 2 + 10),
       k.anchor("center"),
       k.color(255, 165, 0),
@@ -546,7 +551,7 @@ k.scene(
 
     const nearStationIndicator = k.add([
       k.text("⬇️ " + (isMobile ? "⚡" : "ESPAÇO") + " ⬇️", {
-        size: isMobile ? 12 : 14,
+        size: isMobile ? 14 : 16,
       }),
       k.pos(player.pos.x, player.pos.y + 40),
       k.anchor("center"),
@@ -569,7 +574,7 @@ k.scene(
     let levelComplete = false;
 
     // ==================== UI ====================
-    const uiSize = isMobile ? 14 : 18;
+    const uiSize = isMobile ? 18 : 20;
 
     const scoreText = k.add([
       k.text("PONTOS: 0", { size: uiSize }),
@@ -615,7 +620,7 @@ k.scene(
         points: 100,
       },
       {
-        name: "Pepperoni",
+        name: "Bacon",
         ingredients: ["dough", "sauce", "cheese", "pepperoni"],
         time: 50,
         points: 150,
@@ -689,7 +694,7 @@ k.scene(
       player.pos.x = Math.max(40, Math.min(k.width() - 40, player.pos.x));
       player.pos.y = Math.max(
         40,
-        Math.min(k.height() - (isMobile ? 100 : 60), player.pos.y)
+        Math.min(k.height() - (isMobile ? 100 : 60), player.pos.y),
       );
 
       const head = k.get("playerHead")[0];
@@ -729,7 +734,7 @@ k.scene(
       }
 
       const ingredients = player.heldItem.ingredients;
-      let emoji = "📦";
+      let emoji = "🫓";
 
       if (player.heldItem.cooked) {
         emoji = "🍕✨";
@@ -743,7 +748,7 @@ k.scene(
       ) {
         emoji = "🍕🍅";
       } else {
-        emoji = "📦";
+        emoji = "🫓";
       }
 
       held.text = emoji;
@@ -890,7 +895,7 @@ k.scene(
           station.timer = 5;
           player.heldItem = null;
           updateHeldItemDisplay();
-        playSfx("interaction");
+          playSfx("interaction");
 
           k.add([
             k.text("🔥", { size: feedbackSize }),
@@ -1101,8 +1106,8 @@ k.scene(
       for (let i = orders.length - 1; i >= 0; i--) {
         orders[i].timeLeft -= k.dt();
 
-      if (orders[i].timeLeft <= 0) {
-        playSfx("error");
+        if (orders[i].timeLeft <= 0) {
+          playSfx("error");
           orders.splice(i, 1);
           combo = 0;
           comboText.text = "COMBO: 0x";
@@ -1154,10 +1159,10 @@ k.scene(
 
       if (isMobile) {
         // Otimizado para mobile - exibir em colunas compactas
-        orderX = k.width() - 90;
-        orderWidth = 85;
-        orderHeight = 70;
-        orderSpacing = 75;
+        orderX = k.width() - 100;
+        orderWidth = 95;
+        orderHeight = 75;
+        orderSpacing = 80;
       } else {
         orderX = 650;
         orderWidth = 140;
@@ -1179,8 +1184,8 @@ k.scene(
 
         k.drawText({
           text: order.recipe.name,
-          pos: k.vec2(orderX + orderWidth / 2, y + 10),
-          size: isMobile ? 9 : 14,
+          pos: k.vec2(orderX + orderWidth / 2, y + 12),
+          size: isMobile ? 12 : 14,
           anchor: "center",
         });
 
@@ -1197,8 +1202,8 @@ k.scene(
 
         k.drawText({
           text: icons,
-          pos: k.vec2(orderX + orderWidth / 2, y + 24),
-          size: isMobile ? 10 : 16,
+          pos: k.vec2(orderX + orderWidth / 2, y + 28),
+          size: isMobile ? 13 : 16,
           anchor: "center",
         });
 
@@ -1207,55 +1212,56 @@ k.scene(
           progress > 0.5
             ? k.rgb(76, 175, 80)
             : progress > 0.25
-            ? k.rgb(255, 193, 7)
-            : k.rgb(244, 67, 54);
+              ? k.rgb(255, 193, 7)
+              : k.rgb(244, 67, 54);
 
-        const barWidth = isMobile ? 75 : 120;
+        const barWidth = isMobile ? 85 : 120;
         k.drawRect({
           width: barWidth * progress,
           height: 5,
-          pos: k.vec2(orderX + 5, y + (isMobile ? 45 : 65)),
+          pos: k.vec2(orderX + 5, y + (isMobile ? 48 : 65)),
           color: barColor,
         });
 
         k.drawText({
           text: `${Math.ceil(order.timeLeft)}s`,
-          pos: k.vec2(orderX + orderWidth / 2, y + (isMobile ? 56 : 78)),
-          size: isMobile ? 8 : 12,
+          pos: k.vec2(orderX + orderWidth / 2, y + (isMobile ? 60 : 78)),
+          size: isMobile ? 10 : 12,
           anchor: "center",
         });
       });
     });
-  }
+  },
 );
 
 // ==================== LEVEL COMPLETE SCENE ====================
 k.scene("levelcomplete", (data) => {
+  let transitioning = false;
   playSfx("levelComplete", { allowOverlap: false });
 
   k.add([
-    k.text("🎉 NÍVEL CONCLUÍDO! 🎉", { size: isMobile ? 28 : 36 }),
+    k.text("🎉 NÍVEL CONCLUÍDO! 🎉", { size: isMobile ? 30 : 36 }),
     k.pos(k.center().x, isMobile ? 80 : 120),
     k.anchor("center"),
     k.color(76, 175, 80),
   ]);
 
   k.add([
-    k.text(`NÍVEL ${data.level}`, { size: isMobile ? 20 : 24 }),
+    k.text(`NÍVEL ${data.level}`, { size: isMobile ? 22 : 24 }),
     k.pos(k.center().x, isMobile ? 130 : 180),
     k.anchor("center"),
     k.color(200, 100, 255),
   ]);
 
   k.add([
-    k.text(`Pontuação: ${data.score}`, { size: isMobile ? 22 : 28 }),
+    k.text(`Pontuação: ${data.score}`, { size: isMobile ? 24 : 28 }),
     k.pos(k.center().x, isMobile ? 180 : 240),
     k.anchor("center"),
     k.color(255, 165, 0),
   ]);
 
   k.add([
-    k.text(`Tempo: ${Math.floor(data.time)}s`, { size: isMobile ? 16 : 20 }),
+    k.text(`Tempo: ${Math.floor(data.time)}s`, { size: isMobile ? 18 : 20 }),
     k.pos(k.center().x, isMobile ? 220 : 290),
     k.anchor("center"),
     k.color(100, 200, 255),
@@ -1264,24 +1270,31 @@ k.scene("levelcomplete", (data) => {
   const nextLevel = data.level + 1;
 
   if (nextLevel <= 3) {
+    const nextLevelData = {
+      level: nextLevel,
+      difficulty: nextLevel === 2 ? "normal" : "hard",
+      maxTime: nextLevel === 2 ? 150 : 120,
+    };
+
+    const goNextLevel = () => {
+      if (transitioning) return;
+      transitioning = true;
+      k.go("game", nextLevelData);
+    };
+
     k.add([
-      k.text(`PRÓXIMO: NÍVEL ${nextLevel}`, { size: isMobile ? 18 : 22 }),
+      k.text(`PRÓXIMO: NÍVEL ${nextLevel}`, { size: isMobile ? 20 : 22 }),
       k.pos(k.center().x, isMobile ? 270 : 350),
       k.anchor("center"),
       k.color(255, 255, 100),
     ]);
 
-    // Delay automático de 3 segundos antes de passar pro próximo nível
     k.wait(3, () => {
-      k.go("game", {
-        level: nextLevel,
-        difficulty: nextLevel === 2 ? "normal" : "hard",
-        maxTime: nextLevel === 2 ? 150 : 120,
-      });
+      goNextLevel();
     });
 
     const countdownText = k.add([
-      k.text("3", { size: isMobile ? 32 : 48 }),
+      k.text("3", { size: isMobile ? 36 : 48 }),
       k.pos(k.center().x, isMobile ? 320 : 420),
       k.anchor("center"),
       k.color(255, 100, 100),
@@ -1293,97 +1306,141 @@ k.scene("levelcomplete", (data) => {
       if (countdown > 0) {
         countdownText.text = countdown.toString();
       } else {
-        countdownText.opacity = 0;
+        countdownText.text = "";
       }
     });
 
-    // Permitir pular o delay com ESPAÇO ou clique
-    k.onKeyPress("space", () => {
-      k.go("game", {
-        level: nextLevel,
-        difficulty: nextLevel === 2 ? "normal" : "hard",
-        maxTime: nextLevel === 2 ? 150 : 120,
-      });
-    });
-    k.onClick(() => {
-      k.go("game", {
-        level: nextLevel,
-        difficulty: nextLevel === 2 ? "normal" : "hard",
-        maxTime: nextLevel === 2 ? 150 : 120,
-      });
-    });
+    k.add([
+      k.text(isMobile ? "Toque para pular" : "ESPAÇO - Pular", {
+        size: isMobile ? 16 : 16,
+      }),
+      k.pos(k.center().x, k.height() - (isMobile ? 80 : 100)),
+      k.anchor("center"),
+      k.color(200, 200, 200),
+    ]);
+
+    k.onKeyPress("space", goNextLevel);
+    k.onClick(goNextLevel);
     if (isMobile) {
-      k.onTouchStart(() => {
-        k.go("game", {
-          level: nextLevel,
-          difficulty: nextLevel === 2 ? "normal" : "hard",
-          maxTime: nextLevel === 2 ? 150 : 120,
-        });
-      });
+      k.onTouchStart(goNextLevel);
     }
   } else {
+    // Completed all levels!
     k.add([
-      k.text("🏆 PARABÉNS! 🏆", { size: isMobile ? 20 : 24 }),
+      k.text("🏆 PARABÉNS! 🏆", { size: isMobile ? 22 : 24 }),
       k.pos(k.center().x, isMobile ? 120 : 150),
       k.anchor("center"),
       k.color(255, 215, 0),
     ]);
 
     k.add([
-      k.text("VOCÊ COMPLETOU TODOS OS NÍVEIS!", { size: isMobile ? 12 : 16 }),
+      k.text("VOCÊ COMPLETOU TODOS OS NÍVEIS!", { size: isMobile ? 14 : 16 }),
       k.pos(k.center().x, isMobile ? 180 : 240),
       k.anchor("center"),
     ]);
 
     k.add([
-      k.text(`Pontuação Total: ${data.score}`, { size: isMobile ? 20 : 24 }),
+      k.text(`Pontuação Total: ${data.score}`, { size: isMobile ? 22 : 24 }),
       k.pos(k.center().x, isMobile ? 230 : 300),
       k.anchor("center"),
       k.color(255, 165, 0),
     ]);
 
-    // Delay automático de 5 segundos antes de voltar ao menu
-    k.wait(5, () => {
+    const goMenu = () => {
+      if (transitioning) return;
+      transitioning = true;
       k.go("menu");
-    });
+    };
+
+    k.wait(5, goMenu);
 
     const countdownText = k.add([
-      k.text("5", { size: isMobile ? 32 : 48 }),
-      k.pos(k.center().x, isMobile ? 320 : 420),
+      k.text("Menu em 5...", { size: isMobile ? 18 : 20 }),
+      k.pos(k.center().x, isMobile ? 290 : 370),
       k.anchor("center"),
-      k.color(255, 215, 0),
+      k.color(200, 200, 200),
     ]);
 
     let countdown = 5;
     k.loop(1, () => {
       countdown--;
       if (countdown > 0) {
-        countdownText.text = countdown.toString();
+        countdownText.text = `Menu em ${countdown}...`;
       } else {
-        countdownText.opacity = 0;
+        countdownText.text = "";
       }
     });
 
     k.add([
       k.text(isMobile ? "Toque para menu" : "ESPAÇO - Menu principal", {
-        size: isMobile ? 14 : 16,
+        size: isMobile ? 16 : 16,
       }),
       k.pos(k.center().x, k.height() - (isMobile ? 80 : 100)),
       k.anchor("center"),
     ]);
 
-    k.onKeyPress("space", () => k.go("menu"));
-    k.onClick(() => k.go("menu"));
+    k.onKeyPress("space", goMenu);
+    k.onClick(goMenu);
     if (isMobile) {
-      k.onTouchStart(() => k.go("menu"));
+      k.onTouchStart(goMenu);
     }
   }
 
-  k.onKeyPress("escape", () => k.go("menu"));
+  k.onKeyPress("escape", () => {
+    if (transitioning) return;
+    transitioning = true;
+    k.go("menu");
+  });
 });
 
-// ==================== GAME OVER SCENE ====================
+// ==================== GAME OVER SCENE (with jumpscare) ====================
 k.scene("gameover", (data) => {
+  let transitioning = false;
+  playSfx("error", { allowOverlap: false });
+
+  // ---- JUMPSCARE PHASE ----
+  // Black background
+  const jumpBg = k.add([
+    k.rect(k.width(), k.height()),
+    k.pos(0, 0),
+    k.color(0, 0, 0),
+    k.z(500),
+  ]);
+
+  // Scary Freddy face
+  const jumpFace = k.add([
+    k.text("🐻", { size: isMobile ? 180 : 250 }),
+    k.pos(k.center()),
+    k.anchor("center"),
+    k.z(501),
+    k.opacity(1),
+  ]);
+
+  // GAME OVER text on top
+  const jumpText = k.add([
+    k.text("GAME OVER", { size: isMobile ? 48 : 64 }),
+    k.pos(k.center().x, k.center().y + (isMobile ? 130 : 160)),
+    k.anchor("center"),
+    k.color(255, 0, 0),
+    k.z(501),
+  ]);
+
+  // Shake effect during jumpscare
+  k.shake(40);
+
+  // After 1.5 seconds, remove jumpscare and show results
+  k.wait(1.5, () => {
+    jumpBg.destroy();
+    jumpFace.destroy();
+    jumpText.destroy();
+
+    showGameOverResults(data, transitioning, (t) => {
+      transitioning = t;
+    });
+  });
+});
+
+function showGameOverResults(data, transitioning, setTransitioning) {
   let title = "TEMPO ESGOTADO!";
   let titleColor = k.rgb(255, 0, 0);
 
@@ -1392,21 +1449,21 @@ k.scene("gameover", (data) => {
   }
 
   k.add([
-    k.text(title, { size: isMobile ? 28 : 36 }),
+    k.text(title, { size: isMobile ? 30 : 36 }),
     k.pos(k.center().x, isMobile ? 100 : 150),
     k.anchor("center"),
     k.color(titleColor),
   ]);
 
   k.add([
-    k.text(`NÍVEL ${data.level}`, { size: isMobile ? 16 : 20 }),
+    k.text(`NÍVEL ${data.level}`, { size: isMobile ? 18 : 20 }),
     k.pos(k.center().x, isMobile ? 150 : 210),
     k.anchor("center"),
     k.color(200, 100, 255),
   ]);
 
   k.add([
-    k.text(`Pontuação: ${data.score}`, { size: isMobile ? 22 : 28 }),
+    k.text(`Pontuação: ${data.score}`, { size: isMobile ? 24 : 28 }),
     k.pos(k.center().x, isMobile ? 200 : 270),
     k.anchor("center"),
     k.color(255, 165, 0),
@@ -1416,22 +1473,43 @@ k.scene("gameover", (data) => {
   if (data.score > highScore) {
     k.setData("highScore", data.score);
     k.add([
-      k.text("🎉 RECORDE! 🎉", { size: isMobile ? 20 : 24 }),
+      k.text("🎉 RECORDE! 🎉", { size: isMobile ? 22 : 24 }),
       k.pos(k.center().x, isMobile ? 250 : 320),
       k.anchor("center"),
       k.color(76, 175, 80),
     ]);
   } else {
     k.add([
-      k.text(`Recorde: ${highScore}`, { size: isMobile ? 16 : 20 }),
+      k.text(`Recorde: ${highScore}`, { size: isMobile ? 18 : 20 }),
       k.pos(k.center().x, isMobile ? 250 : 320),
       k.anchor("center"),
     ]);
   }
 
+  const retryData = {
+    level: data.level,
+    difficulty:
+      data.level === 1 ? "easy" : data.level === 2 ? "normal" : "hard",
+    maxTime: data.level === 1 ? 180 : data.level === 2 ? 150 : 120,
+  };
+
+  const retryLevel = () => {
+    if (transitioning) return;
+    transitioning = true;
+    setTransitioning(true);
+    k.go("game", retryData);
+  };
+
+  const goMenu = () => {
+    if (transitioning) return;
+    transitioning = true;
+    setTransitioning(true);
+    k.go("menu");
+  };
+
   k.add([
     k.text(isMobile ? "Toque para repetir" : "ESPAÇO - Repetir nível", {
-      size: isMobile ? 14 : 16,
+      size: isMobile ? 16 : 16,
     }),
     k.pos(k.center().x, k.height() - (isMobile ? 100 : 130)),
     k.anchor("center"),
@@ -1446,35 +1524,14 @@ k.scene("gameover", (data) => {
     ]);
   }
 
-  k.onKeyPress("space", () =>
-    k.go("game", {
-      level: data.level,
-      difficulty:
-        data.level === 1 ? "easy" : data.level === 2 ? "normal" : "hard",
-      maxTime: data.level === 1 ? 180 : data.level === 2 ? 150 : 120,
-    })
-  );
-  k.onKeyPress("escape", () => k.go("menu"));
-  k.onClick(() =>
-    k.go("game", {
-      level: data.level,
-      difficulty:
-        data.level === 1 ? "easy" : data.level === 2 ? "normal" : "hard",
-      maxTime: data.level === 1 ? 180 : data.level === 2 ? 150 : 120,
-    })
-  );
+  k.onKeyPress("space", retryLevel);
+  k.onKeyPress("escape", goMenu);
+  k.onClick(retryLevel);
 
   if (isMobile) {
-    k.onTouchStart(() =>
-      k.go("game", {
-        level: data.level,
-        difficulty:
-          data.level === 1 ? "easy" : data.level === 2 ? "normal" : "hard",
-        maxTime: data.level === 1 ? 180 : data.level === 2 ? 150 : 120,
-      })
-    );
+    k.onTouchStart(retryLevel);
   }
-});
+}
 
 // ==================== START ====================
 k.go("menu");
