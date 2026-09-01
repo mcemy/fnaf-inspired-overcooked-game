@@ -13,8 +13,8 @@ const isMobile =
 let isPortrait = window.innerHeight > window.innerWidth;
 let gameStarted = false;
 let currentK = null;
-const GAME_WIDTH = 800;
-const GAME_HEIGHT = 600;
+const GAME_WIDTH = 1000;
+const GAME_HEIGHT = 500;
 
 // Orientation change handler
 function handleOrientationChange() {
@@ -436,22 +436,22 @@ k.scene(
     ]);
 
     // Counter
-    k.add([k.rect(k.width() - 80, 10), k.pos(40, 235), k.color(139, 69, 19)]);
+    k.add([k.rect(k.width() - 40, 10), k.pos(20, 195), k.color(139, 69, 19)]);
 
     // ==================== STATIONS ====================
-    const stationSize = 75;
-    const iconSize = 34;
+    const stationSize = 85;
+    const iconSize = 38;
 
     const stations = [
-      { x: 90, y: 115, type: "dough", icon: "🫓", name: "Massa" },
-      { x: 210, y: 115, type: "sauce", icon: "🍅", name: "Molho" },
-      { x: 330, y: 115, type: "cheese", icon: "🧀", name: "Queijo" },
-      { x: 450, y: 115, type: "pepperoni", icon: "🥓", name: "Bacon" },
-      { x: 570, y: 115, type: "mushroom", icon: "🍄", name: "Cogu" },
-      { x: 90, y: 350, type: "oven", icon: "🔥", name: "Forno 1" },
-      { x: 210, y: 350, type: "oven", icon: "🔥", name: "Forno 2" },
-      { x: 450, y: 350, type: "delivery", icon: "🍽️", name: "Entrega" },
-      { x: 570, y: 350, type: "trash", icon: "🗑️", name: "Lixo" },
+      { x: 90, y: 95, type: "dough", icon: "🫓", name: "Massa" },
+      { x: 240, y: 95, type: "sauce", icon: "🍅", name: "Molho" },
+      { x: 390, y: 95, type: "cheese", icon: "🧀", name: "Queijo" },
+      { x: 540, y: 95, type: "pepperoni", icon: "🥓", name: "Bacon" },
+      { x: 690, y: 95, type: "mushroom", icon: "🍄", name: "Cogu" },
+      { x: 90, y: 295, type: "oven", icon: "🔥", name: "Forno 1" },
+      { x: 240, y: 295, type: "oven", icon: "🔥", name: "Forno 2" },
+      { x: 540, y: 295, type: "delivery", icon: "🍽️", name: "Entrega" },
+      { x: 690, y: 295, type: "trash", icon: "🗑️", name: "Lixo" },
     ];
 
     const stationObjects = [];
@@ -476,14 +476,14 @@ k.scene(
 
       const icon = k.add([
         k.text(s.icon, { size: iconSize }),
-        k.pos(s.x, s.y - 4),
+        k.pos(s.x, s.y - 6),
         k.anchor("center"),
         k.z(6),
       ]);
 
       k.add([
-        k.text(s.name, { size: 14 }),
-        k.pos(s.x, s.y + stationSize / 2 - 10),
+        k.text(s.name, { size: 16 }),
+        k.pos(s.x, s.y + stationSize / 2 - 12),
         k.anchor("center"),
         k.z(6),
       ]);
@@ -492,18 +492,18 @@ k.scene(
     });
 
     // ==================== PLAYER ====================
-    const playerSize = 32;
+    const playerSize = 34;
 
     const player = k.add([
       k.rect(playerSize, playerSize),
-      k.pos(k.center().x, 460),
+      k.pos(390, 390),
       k.anchor("center"),
       k.area(),
       k.color(160, 82, 45),
       k.z(10),
       {
         heldItem: null,
-        speed: isMobile ? 220 : 250,
+        speed: 280,
       },
     ]);
 
@@ -517,7 +517,7 @@ k.scene(
     ]);
 
     k.add([
-      k.text("FREDDY", { size: isMobile ? 11 : 12 }),
+      k.text("FREDDY", { size: 13 }),
       k.pos(player.pos.x, player.pos.y + playerSize / 2 + 10),
       k.anchor("center"),
       k.color(255, 165, 0),
@@ -526,7 +526,7 @@ k.scene(
     ]);
 
     const heldItemDisplay = k.add([
-      k.text("", { size: isMobile ? 20 : 24 }),
+      k.text("", { size: 24 }),
       k.pos(player.pos.x, player.pos.y - 30),
       k.anchor("center"),
       k.z(12),
@@ -535,7 +535,7 @@ k.scene(
 
     const nearStationIndicator = k.add([
       k.text("⬇️ " + (isMobile ? "⚡" : "ESPAÇO") + " ⬇️", {
-        size: isMobile ? 14 : 16,
+        size: 16,
       }),
       k.pos(player.pos.x, player.pos.y + 40),
       k.anchor("center"),
@@ -558,39 +558,39 @@ k.scene(
     let levelComplete = false;
 
     // ==================== UI ====================
-    const uiSize = isMobile ? 18 : 20;
+    const uiSize = 22;
 
     const scoreText = k.add([
       k.text("PONTOS: 0", { size: uiSize }),
-      k.pos(10, 10),
+      k.pos(20, 10),
       k.color(255, 165, 0),
       k.z(100),
     ]);
 
     const comboText = k.add([
-      k.text("COMBO: 0x", { size: uiSize - 2 }),
-      k.pos(10, 10 + uiSize + 5),
+      k.text("COMBO: 0x", { size: uiSize - 3 }),
+      k.pos(20, 36),
       k.color(76, 175, 80),
       k.z(100),
     ]);
 
     const recipesText = k.add([
-      k.text(`RECEITAS: 0/${RECIPES_NEEDED}`, { size: uiSize - 2 }),
-      k.pos(10, 10 + uiSize * 2 + 10),
+      k.text(`RECEITAS: 0/${RECIPES_NEEDED}`, { size: uiSize - 3 }),
+      k.pos(20, 62),
       k.color(100, 200, 255),
       k.z(100),
     ]);
 
     const levelText = k.add([
-      k.text(`NÍVEL ${currentLevel}`, { size: uiSize - 2 }),
-      k.pos(k.width() - 120, 10),
+      k.text(`NÍVEL ${currentLevel}`, { size: uiSize }),
+      k.pos(980, 10),
       k.anchor("topright"),
       k.color(200, 100, 255),
       k.z(100),
     ]);
     const timerText = k.add([
-      k.text("TEMPO: 3:00", { size: uiSize }),
-      k.pos(k.width() / 2, 10),
+      k.text("TEMPO: 3:00", { size: 24 }),
+      k.pos(500, 15),
       k.anchor("center"),
       k.z(100),
     ]);
@@ -1148,27 +1148,27 @@ k.scene(
 
     // ==================== DRAW ORDERS ====================
     k.onDraw(() => {
-      const orderX = 645;
-      const orderWidth = 140;
-      const orderHeight = 85;
-      const orderSpacing = 95;
+      const orderX = 810;
+      const orderWidth = 170;
+      const orderHeight = 90;
+      const orderSpacing = 100;
 
       orders.forEach((order, i) => {
-        const y = 90 + i * orderSpacing;
+        const y = 85 + i * orderSpacing;
 
         k.drawRect({
           width: orderWidth,
           height: orderHeight,
           pos: k.vec2(orderX, y),
           color: k.rgb(0, 0, 0),
-          opacity: 0.75,
+          opacity: 0.8,
           outline: { width: 2, color: k.rgb(255, 165, 0) },
         });
 
         k.drawText({
           text: order.recipe.name,
-          pos: k.vec2(orderX + orderWidth / 2, y + 12),
-          size: 15,
+          pos: k.vec2(orderX + orderWidth / 2, y + 14),
+          size: 17,
           anchor: "center",
         });
 
@@ -1185,8 +1185,8 @@ k.scene(
 
         k.drawText({
           text: icons,
-          pos: k.vec2(orderX + orderWidth / 2, y + 30),
-          size: 18,
+          pos: k.vec2(orderX + orderWidth / 2, y + 34),
+          size: 20,
           anchor: "center",
         });
 
@@ -1198,18 +1198,18 @@ k.scene(
               ? k.rgb(255, 193, 7)
               : k.rgb(244, 67, 54);
 
-        const barWidth = 120;
+        const barWidth = 140;
         k.drawRect({
           width: barWidth * progress,
           height: 6,
-          pos: k.vec2(orderX + 10, y + 52),
+          pos: k.vec2(orderX + 15, y + 56),
           color: barColor,
         });
 
         k.drawText({
           text: `${Math.ceil(order.timeLeft)}s`,
-          pos: k.vec2(orderX + orderWidth / 2, y + 68),
-          size: 13,
+          pos: k.vec2(orderX + orderWidth / 2, y + 72),
+          size: 14,
           anchor: "center",
         });
       });
