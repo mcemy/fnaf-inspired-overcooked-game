@@ -436,22 +436,22 @@ k.scene(
     ]);
 
     // Counter
-    k.add([k.rect(k.width() - 40, 10), k.pos(20, 195), k.color(139, 69, 19)]);
+    k.add([k.rect(k.width() - 40, 10), k.pos(20, 205), k.color(139, 69, 19)]);
 
     // ==================== STATIONS ====================
     const stationSize = 85;
     const iconSize = 38;
 
     const stations = [
-      { x: 90, y: 95, type: "dough", icon: "🫓", name: "Massa" },
-      { x: 240, y: 95, type: "sauce", icon: "🍅", name: "Molho" },
-      { x: 390, y: 95, type: "cheese", icon: "🧀", name: "Queijo" },
-      { x: 540, y: 95, type: "pepperoni", icon: "🥓", name: "Bacon" },
-      { x: 690, y: 95, type: "mushroom", icon: "🍄", name: "Cogu" },
-      { x: 90, y: 295, type: "oven", icon: "🔥", name: "Forno 1" },
-      { x: 240, y: 295, type: "oven", icon: "🔥", name: "Forno 2" },
-      { x: 540, y: 295, type: "delivery", icon: "🍽️", name: "Entrega" },
-      { x: 690, y: 295, type: "trash", icon: "🗑️", name: "Lixo" },
+      { x: 75, y: 110, type: "dough", icon: "🫓", name: "Massa" },
+      { x: 210, y: 110, type: "sauce", icon: "🍅", name: "Molho" },
+      { x: 345, y: 110, type: "cheese", icon: "🧀", name: "Queijo" },
+      { x: 480, y: 110, type: "pepperoni", icon: "🥓", name: "Bacon" },
+      { x: 615, y: 110, type: "mushroom", icon: "🍄", name: "Cogumelo" },
+      { x: 75, y: 310, type: "oven", icon: "🔥", name: "Forno 1" },
+      { x: 210, y: 310, type: "oven", icon: "🔥", name: "Forno 2" },
+      { x: 480, y: 310, type: "delivery", icon: "🍽️", name: "Entrega" },
+      { x: 615, y: 310, type: "trash", icon: "🗑️", name: "Lixo" },
     ];
 
     const stationObjects = [];
@@ -482,7 +482,7 @@ k.scene(
       ]);
 
       k.add([
-        k.text(s.name, { size: 16 }),
+        k.text(s.name, { size: s.name === "Cogumelo" ? 13 : 15 }),
         k.pos(s.x, s.y + stationSize / 2 - 12),
         k.anchor("center"),
         k.z(6),
@@ -496,7 +496,7 @@ k.scene(
 
     const player = k.add([
       k.rect(playerSize, playerSize),
-      k.pos(390, 390),
+      k.pos(345, 390),
       k.anchor("center"),
       k.area(),
       k.color(160, 82, 45),
@@ -557,41 +557,42 @@ k.scene(
     let completedRecipes = 0;
     let levelComplete = false;
 
-    // ==================== UI ====================
-    const uiSize = 22;
+    // ==================== UI (TOP BAR) ====================
+    const uiSize = 18;
 
     const scoreText = k.add([
       k.text("PONTOS: 0", { size: uiSize }),
-      k.pos(20, 10),
+      k.pos(20, 14),
       k.color(255, 165, 0),
       k.z(100),
     ]);
 
     const comboText = k.add([
-      k.text("COMBO: 0x", { size: uiSize - 3 }),
-      k.pos(20, 36),
+      k.text("COMBO: 0x", { size: uiSize }),
+      k.pos(190, 14),
       k.color(76, 175, 80),
       k.z(100),
     ]);
 
     const recipesText = k.add([
-      k.text(`RECEITAS: 0/${RECIPES_NEEDED}`, { size: uiSize - 3 }),
-      k.pos(20, 62),
+      k.text(`RECEITAS: 0/${RECIPES_NEEDED}`, { size: uiSize }),
+      k.pos(340, 14),
       k.color(100, 200, 255),
+      k.z(100),
+    ]);
+
+    const timerText = k.add([
+      k.text("TEMPO: 3:00", { size: 22 }),
+      k.pos(570, 14),
+      k.anchor("center"),
       k.z(100),
     ]);
 
     const levelText = k.add([
       k.text(`NÍVEL ${currentLevel}`, { size: uiSize }),
-      k.pos(980, 10),
+      k.pos(980, 14),
       k.anchor("topright"),
       k.color(200, 100, 255),
-      k.z(100),
-    ]);
-    const timerText = k.add([
-      k.text("TEMPO: 3:00", { size: 24 }),
-      k.pos(500, 15),
-      k.anchor("center"),
       k.z(100),
     ]);
 
