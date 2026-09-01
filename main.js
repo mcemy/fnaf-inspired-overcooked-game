@@ -2,9 +2,13 @@ import kaplay from "kaplay";
 
 // ==================== MOBILE DETECTION & ORIENTATION ====================
 const isMobile =
-  /Android|webOS|iPhone|iPad|iPot|BlackBerry|IEMobile|Opera Mini/i.test(
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
     navigator.userAgent,
-  ) || window.innerWidth < 768;
+  ) ||
+  "ontouchstart" in window ||
+  navigator.maxTouchPoints > 0 ||
+  window.innerWidth < 1024 ||
+  window.innerHeight < 600;
 
 let isPortrait = window.innerHeight > window.innerWidth;
 let gameStarted = false;
@@ -432,44 +436,23 @@ k.scene(
     ]);
 
     // Counter
-    k.add([
-      k.rect(k.width() - (isMobile ? 50 : 100), 10),
-      k.pos(isMobile ? 25 : 50, isMobile ? 200 : 250),
-      k.color(139, 69, 19),
-    ]);
+    k.add([k.rect(k.width() - 80, 10), k.pos(40, 235), k.color(139, 69, 19)]);
 
     // ==================== STATIONS ====================
-    const stationSize = isMobile ? 50 : 80;
-    const iconSize = isMobile ? 22 : 36;
+    const stationSize = 75;
+    const iconSize = 34;
 
-    // Calcular posições dinamicamente para mobile
-    let stations;
-    if (isMobile) {
-      // Layout otimizado para mobile - 2 linhas
-      stations = [
-        { x: 60, y: 90, type: "dough", icon: "🫓", name: "Massa" },
-        { x: 130, y: 90, type: "sauce", icon: "🍅", name: "Molho" },
-        { x: 200, y: 90, type: "cheese", icon: "🧀", name: "Queijo" },
-        { x: 270, y: 90, type: "pepperoni", icon: "🥓", name: "Bacon" },
-        { x: 340, y: 90, type: "mushroom", icon: "🍄", name: "Cogu" },
-        { x: 60, y: 200, type: "oven", icon: "🔥", name: "Forno 1" },
-        { x: 130, y: 200, type: "oven", icon: "🔥", name: "Forno 2" },
-        { x: 270, y: 200, type: "delivery", icon: "🍽️", name: "Entrega" },
-        { x: 340, y: 200, type: "trash", icon: "🗑️", name: "Lixo" },
-      ];
-    } else {
-      stations = [
-        { x: 100, y: 120, type: "dough", icon: "🫓", name: "Massa" },
-        { x: 220, y: 120, type: "sauce", icon: "🍅", name: "Molho" },
-        { x: 340, type: "cheese", y: 120, icon: "🧀", name: "Queijo" },
-        { x: 460, y: 120, type: "pepperoni", icon: "🥓", name: "Bacon" },
-        { x: 580, y: 120, type: "mushroom", icon: "🍄", name: "Cogumelo" },
-        { x: 100, y: 350, type: "oven", icon: "🔥", name: "Forno 1" },
-        { x: 220, y: 350, type: "oven", icon: "🔥", name: "Forno 2" },
-        { x: 460, y: 350, type: "delivery", icon: "🍽️", name: "Entrega" },
-        { x: 580, y: 350, type: "trash", icon: "🗑️", name: "Lixo" },
-      ];
-    }
+    const stations = [
+      { x: 90, y: 115, type: "dough", icon: "🫓", name: "Massa" },
+      { x: 210, y: 115, type: "sauce", icon: "🍅", name: "Molho" },
+      { x: 330, y: 115, type: "cheese", icon: "🧀", name: "Queijo" },
+      { x: 450, y: 115, type: "pepperoni", icon: "🥓", name: "Bacon" },
+      { x: 570, y: 115, type: "mushroom", icon: "🍄", name: "Cogu" },
+      { x: 90, y: 350, type: "oven", icon: "🔥", name: "Forno 1" },
+      { x: 210, y: 350, type: "oven", icon: "🔥", name: "Forno 2" },
+      { x: 450, y: 350, type: "delivery", icon: "🍽️", name: "Entrega" },
+      { x: 570, y: 350, type: "trash", icon: "🗑️", name: "Lixo" },
+    ];
 
     const stationObjects = [];
 
@@ -499,8 +482,8 @@ k.scene(
       ]);
 
       k.add([
-        k.text(s.name, { size: isMobile ? 12 : 13 }),
-        k.pos(s.x, s.y + stationSize / 2 - 8),
+        k.text(s.name, { size: 14 }),
+        k.pos(s.x, s.y + stationSize / 2 - 10),
         k.anchor("center"),
         k.z(6),
       ]);
@@ -509,11 +492,11 @@ k.scene(
     });
 
     // ==================== PLAYER ====================
-    const playerSize = isMobile ? 24 : 32;
+    const playerSize = 32;
 
     const player = k.add([
       k.rect(playerSize, playerSize),
-      k.pos(k.center().x, k.height() - (isMobile ? 80 : 150)),
+      k.pos(k.center().x, 460),
       k.anchor("center"),
       k.area(),
       k.color(160, 82, 45),
@@ -1165,37 +1148,27 @@ k.scene(
 
     // ==================== DRAW ORDERS ====================
     k.onDraw(() => {
-      let orderX, orderWidth, orderHeight, orderSpacing;
-
-      if (isMobile) {
-        // Otimizado para mobile - exibir em colunas compactas
-        orderX = k.width() - 100;
-        orderWidth = 95;
-        orderHeight = 75;
-        orderSpacing = 80;
-      } else {
-        orderX = 650;
-        orderWidth = 140;
-        orderHeight = 90;
-        orderSpacing = 100;
-      }
+      const orderX = 645;
+      const orderWidth = 140;
+      const orderHeight = 85;
+      const orderSpacing = 95;
 
       orders.forEach((order, i) => {
-        const y = (isMobile ? 30 : 100) + i * orderSpacing;
+        const y = 90 + i * orderSpacing;
 
         k.drawRect({
           width: orderWidth,
           height: orderHeight,
           pos: k.vec2(orderX, y),
           color: k.rgb(0, 0, 0),
-          opacity: 0.7,
+          opacity: 0.75,
           outline: { width: 2, color: k.rgb(255, 165, 0) },
         });
 
         k.drawText({
           text: order.recipe.name,
           pos: k.vec2(orderX + orderWidth / 2, y + 12),
-          size: isMobile ? 12 : 14,
+          size: 15,
           anchor: "center",
         });
 
@@ -1212,8 +1185,8 @@ k.scene(
 
         k.drawText({
           text: icons,
-          pos: k.vec2(orderX + orderWidth / 2, y + 28),
-          size: isMobile ? 13 : 16,
+          pos: k.vec2(orderX + orderWidth / 2, y + 30),
+          size: 18,
           anchor: "center",
         });
 
@@ -1225,18 +1198,18 @@ k.scene(
               ? k.rgb(255, 193, 7)
               : k.rgb(244, 67, 54);
 
-        const barWidth = isMobile ? 85 : 120;
+        const barWidth = 120;
         k.drawRect({
           width: barWidth * progress,
-          height: 5,
-          pos: k.vec2(orderX + 5, y + (isMobile ? 48 : 65)),
+          height: 6,
+          pos: k.vec2(orderX + 10, y + 52),
           color: barColor,
         });
 
         k.drawText({
           text: `${Math.ceil(order.timeLeft)}s`,
-          pos: k.vec2(orderX + orderWidth / 2, y + (isMobile ? 60 : 78)),
-          size: isMobile ? 10 : 12,
+          pos: k.vec2(orderX + orderWidth / 2, y + 68),
+          size: 13,
           anchor: "center",
         });
       });
