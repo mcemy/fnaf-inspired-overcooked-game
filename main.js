@@ -167,6 +167,9 @@ window.addEventListener("load", () => {
 });
 
 // ==================== KAPLAY INIT ====================
+// O Kaplay desenha em 1x por padrão, o que borra tudo em telas de alta densidade (celular)
+const pixelDensity = Math.min(window.devicePixelRatio || 1, 3);
+
 const k = kaplay({
   canvas: document.getElementById("game-canvas"),
   width: GAME_WIDTH,
@@ -175,12 +178,20 @@ const k = kaplay({
   letterbox: true,
   stretch: false,
   font: "body",
+  pixelDensity,
   global: false,
 });
 
-// Fonte pixel só fica nítida em tamanhos grandes; textos pequenos usam uma fonte lisa
-k.loadFont("body", bodyFontUrl, { size: 48, filter: "linear" });
-k.loadFont("pixel", pixelFontUrl, { size: 64, filter: "linear" });
+// Fonte pixel só fica nítida em tamanhos grandes; textos pequenos usam uma fonte lisa.
+// As letras são geradas proporcionais à densidade da tela para não esticar no celular.
+k.loadFont("body", bodyFontUrl, {
+  size: Math.round(40 * pixelDensity),
+  filter: "linear",
+});
+k.loadFont("pixel", pixelFontUrl, {
+  size: Math.round(48 * pixelDensity),
+  filter: "linear",
+});
 const fontFor = (size) => (size >= 24 ? "pixel" : "body");
 
 const WHITE = k.rgb(255, 255, 255);
