@@ -10,8 +10,6 @@
 [![Vite](https://img.shields.io/badge/BUILD-VITE-64c8ff?style=for-the-badge&labelColor=14121f)](https://vite.dev)
 [![Vercel](https://img.shields.io/badge/HOST-VERCEL-4caf50?style=for-the-badge&labelColor=14121f)](https://fnaf-pizza.vercel.app)
 
-<img src="docs/screenshots/gameplay.png" alt="Gameplay: Freddy in the kitchen with ingredient stations, ovens and the order panel" width="760">
-
 `> INSERT COIN TO CONTINUE_`
 
 </div>

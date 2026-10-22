@@ -1,4 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="860" height="230" viewBox="0 0 860 230" shape-rendering="crispEdges" role="img" aria-label="FNAF Pizza Kitchen">
+<style>
+.pupils{animation:look 8s steps(1,end) infinite}
+@keyframes look{0%{transform:translate(0,0)}20%{transform:translate(-10px,0)}36%{transform:translate(-10px,-10px)}50%{transform:translate(0,-10px)}62%{transform:translate(0,0)}}
+.lids{opacity:0;animation:blink 8s steps(1,end) infinite}
+@keyframes blink{0%{opacity:0}27%{opacity:1}29%{opacity:0}72%{opacity:1}74%{opacity:0}}
+.creepy{opacity:0;animation:creepy 8s steps(1,end) infinite}
+@keyframes creepy{0%{opacity:0}88%{opacity:1}95%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.pupils,.lids,.creepy{animation:none}}
+</style>
 <defs><clipPath id="r"><rect width="860" height="230" rx="14"/></clipPath></defs>
 <g clip-path="url(#r)">
 <rect width="860" height="230" fill="#14121f"/>
@@ -102,11 +111,11 @@
 <rect x="70" y="104" width="10" height="10" fill="#965c30"/>
 <rect x="80" y="104" width="10" height="10" fill="#965c30"/>
 <rect x="90" y="104" width="10" height="10" fill="#ffffff"/>
-<rect x="100" y="104" width="10" height="10" fill="#2850aa"/>
+<rect x="100" y="104" width="10" height="10" fill="#ffffff"/>
 <rect x="110" y="104" width="10" height="10" fill="#965c30"/>
 <rect x="120" y="104" width="10" height="10" fill="#965c30"/>
 <rect x="130" y="104" width="10" height="10" fill="#ffffff"/>
-<rect x="140" y="104" width="10" height="10" fill="#2850aa"/>
+<rect x="140" y="104" width="10" height="10" fill="#ffffff"/>
 <rect x="150" y="104" width="10" height="10" fill="#965c30"/>
 <rect x="160" y="104" width="10" height="10" fill="#965c30"/>
 <rect x="170" y="104" width="10" height="10" fill="#5c361a"/>
@@ -655,6 +664,9 @@
 <rect x="777" y="151" width="5" height="5" fill="#ffdd57"/>
 <rect x="797" y="151" width="5" height="5" fill="#ffdd57"/>
 <rect x="802" y="151" width="5" height="5" fill="#ffdd57"/>
+<g class="pupils"><rect x="100" y="104" width="10" height="10" fill="#2850aa"/><rect x="140" y="104" width="10" height="10" fill="#2850aa"/></g>
+<g class="lids"><rect x="90" y="94" width="20" height="20" fill="#965c30"/><rect x="130" y="94" width="20" height="20" fill="#965c30"/></g>
+<g class="creepy"><rect x="90" y="94" width="20" height="20" fill="#121012"/><rect x="96.0" y="100.0" width="8.0" height="8.0" fill="#eb4034"/><rect x="98.5" y="102.5" width="3.0" height="3.0" fill="#ffffff"/><rect x="130" y="94" width="20" height="20" fill="#121012"/><rect x="136.0" y="100.0" width="8.0" height="8.0" fill="#eb4034"/><rect x="138.5" y="102.5" width="3.0" height="3.0" fill="#ffffff"/></g>
 </g>
 <rect x="2" y="2" width="856" height="226" rx="13" fill="none" stroke="#ffa500" stroke-width="4"/>
 </svg>
