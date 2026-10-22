@@ -32,11 +32,13 @@ Orders show up on the right. Build each pizza at the stations, bake it, and deli
 
 Every level lasts until the clock hits zero, so the more pizzas you deliver, the better you score.
 
-| Recipes delivered | Rating |
-| :---: | :---: |
-| 2 | ⭐☆☆ |
-| 4 | ⭐⭐☆ |
-| 6+ | ⭐⭐⭐ |
+<table align="center">
+  <tr>
+    <td align="center" width="140">⭐<br><b>2 recipes</b></td>
+    <td align="center" width="140">⭐⭐<br><b>4 recipes</b></td>
+    <td align="center" width="140">⭐⭐⭐<br><b>6+ recipes</b></td>
+  </tr>
+</table>
 
 You need at least **one star** to reach the next level. Finish a shift with zero stars and Freddy comes to say hi.
 
@@ -47,24 +49,61 @@ You need at least **one star** to reach the next level. Finish a shift with zero
 
 ## 🕹 CONTROLS
 
-| Action | Keyboard | Mobile |
-| --- | --- | --- |
-| Move | `WASD` / arrow keys | Joystick |
-| Use station | `SPACE` | ⚡ button |
-| Pause | `ESC` / `P` | ⏸️ button |
-| Mute | `M` | 🔊 button |
+<table align="center">
+  <tr>
+    <th></th>
+    <th>⌨️ Keyboard</th>
+    <th>📱 Mobile</th>
+  </tr>
+  <tr>
+    <td><b>Move</b></td>
+    <td><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or arrows</td>
+    <td>Joystick</td>
+  </tr>
+  <tr>
+    <td><b>Use station</b></td>
+    <td><kbd>Space</kbd></td>
+    <td>⚡ button</td>
+  </tr>
+  <tr>
+    <td><b>Pause</b></td>
+    <td><kbd>Esc</kbd> or <kbd>P</kbd></td>
+    <td>⏸️ button</td>
+  </tr>
+  <tr>
+    <td><b>Mute</b></td>
+    <td><kbd>M</kbd></td>
+    <td>🔊 button</td>
+  </tr>
+</table>
 
 On phones, play in landscape. The game pauses itself if you rotate to portrait or switch tabs.
 
 ## 🍕 RECIPES
 
-| Pizza | Ingredients | Points |
-| --- | --- | :---: |
-| Margherita | 🫓 🍅 🧀 | 100 |
-| Queijo Duplo | 🫓 🍅 🧀 🧀 | 140 |
-| Bacon | 🫓 🍅 🧀 🥓 | 150 |
-| Cogumelo | 🫓 🍅 🧀 🍄 | 150 |
-| Supreme | 🫓 🍅 🧀 🥓 🍄 | 200 |
+<table align="center">
+  <tr>
+    <th>Margherita</th>
+    <th>Queijo Duplo</th>
+    <th>Bacon</th>
+    <th>Cogumelo</th>
+    <th>Supreme</th>
+  </tr>
+  <tr>
+    <td align="center">🫓🍅🧀</td>
+    <td align="center">🫓🍅🧀🧀</td>
+    <td align="center">🫓🍅🧀🥓</td>
+    <td align="center">🫓🍅🧀🍄</td>
+    <td align="center">🫓🍅🧀🥓🍄</td>
+  </tr>
+  <tr>
+    <td align="center"><b>100</b> pts</td>
+    <td align="center"><b>140</b> pts</td>
+    <td align="center"><b>150</b> pts</td>
+    <td align="center"><b>150</b> pts</td>
+    <td align="center"><b>200</b> pts</td>
+  </tr>
+</table>
 
 There are 3 levels. Each one has a shorter shift, tighter order timers and more orders at once.
 
@@ -79,25 +118,20 @@ npm install
 npm run dev
 ```
 
-Then open the URL Vite prints (usually `http://localhost:5173`). `npm start` does the same thing.
+Then open the URL Vite prints (usually `http://localhost:5173`). Other scripts:
+
+- `npm run build` builds the production version into `dist/`
+- `npm run preview` serves that build locally
 
 > Opening `index.html` directly in the browser won't work. The game imports Kaplay from `node_modules`, so it needs Vite to run.
 
-| Command | What it does |
-| --- | --- |
-| `npm run dev` | Starts the dev server with hot reload |
-| `npm run build` | Builds the production version into `dist/` |
-| `npm run preview` | Serves the production build locally |
-
 ## 🔧 TECH STACK
 
-| Tech | Used for |
-| --- | --- |
-| [Kaplay](https://kaplayjs.com) | Game engine: scenes, input, drawing, audio |
-| JavaScript | All the game logic (`main.js`) |
-| [Tiny5](https://fonts.google.com/specimen/Tiny5) + [Fredoka](https://fonts.google.com/specimen/Fredoka) | Pixel font for titles, rounded font for small text |
-| Vite | Dev server and build |
-| Vercel | Hosting |
+- **[Kaplay](https://kaplayjs.com)**: game engine (scenes, input, drawing, audio)
+- **JavaScript**: all of the game logic lives in `main.js`
+- **[Tiny5](https://fonts.google.com/specimen/Tiny5)** and **[Fredoka](https://fonts.google.com/specimen/Fredoka)**: pixel font for titles, rounded font for small text
+- **[Vite](https://vite.dev)**: dev server and build
+- **[Vercel](https://vercel.com)**: hosting
 
 All of the art, including Freddy, is drawn in code with Kaplay shapes, so there are no sprite files.
 
