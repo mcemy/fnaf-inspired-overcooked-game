@@ -2,8 +2,8 @@
 
 <img src="docs/banner.svg" alt="FNAF Pizza Kitchen" width="820">
 
-**An Overcooked-style cooking game set in Freddy Fazbear's Pizza.**
-Cook fast, earn stars, and don't let Freddy down... 🐻
+
+
 
 [![PLAY NOW](https://img.shields.io/badge/▶_PLAY_NOW-ffa500?style=for-the-badge&labelColor=14121f)](https://fnaf-pizza.vercel.app)
 [![Kaplay](https://img.shields.io/badge/ENGINE-KAPLAY-c878ff?style=for-the-badge&labelColor=14121f)](https://kaplayjs.com)
