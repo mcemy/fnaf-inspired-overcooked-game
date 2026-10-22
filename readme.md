@@ -1,18 +1,6 @@
 <div align="center">
 
-```text
-█████ █   █  ███  █████     ████  █████ █████ █████  ███
-█     ██  █ █   █ █         █   █   █      █     █  █   █
-████  █ █ █ █████ ████      ████    █     █     █   █████
-█     █  ██ █   █ █         █       █    █     █    █   █
-█     █   █ █   █ █         █     █████ █████ █████ █   █
-
-         █   █ █████ █████  ████ █   █ █████ █   █
-         █  █    █     █   █     █   █ █     ██  █
-         ███     █     █   █     █████ ████  █ █ █
-         █  █    █     █   █     █   █ █     █  ██
-         █   █ █████   █    ████ █   █ █████ █   █
-```
+<img src="docs/banner.svg" alt="FNAF Pizza Kitchen" width="820">
 
 **An Overcooked-style cooking game set in Freddy Fazbear's Pizza.**
 Cook fast, earn stars, and don't let Freddy down... 🐻
