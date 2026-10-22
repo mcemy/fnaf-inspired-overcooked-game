@@ -1,5 +1,6 @@
 import kaplay from "kaplay";
 import pixelFontUrl from "@fontsource/tiny5/files/tiny5-latin-400-normal.woff2?url";
+import bodyFontUrl from "@fontsource/fredoka/files/fredoka-latin-600-normal.woff2?url";
 
 // ==================== CONFIG ====================
 const GAME_WIDTH = 1000;
@@ -173,15 +174,14 @@ const k = kaplay({
   background: [20, 18, 31],
   letterbox: true,
   stretch: false,
-  font: "pixel",
+  font: "body",
   global: false,
 });
 
-// A fonte pixel fica borrada quando o atlas é muito maior que o texto,
-// então textos pequenos e grandes usam atlas de tamanhos diferentes
-k.loadFont("pixel", pixelFontUrl, { size: 32, filter: "linear" });
-k.loadFont("pixel-big", pixelFontUrl, { size: 64, filter: "linear" });
-const fontFor = (size) => (size >= 28 ? "pixel-big" : "pixel");
+// Fonte pixel só fica nítida em tamanhos grandes; textos pequenos usam uma fonte lisa
+k.loadFont("body", bodyFontUrl, { size: 48, filter: "linear" });
+k.loadFont("pixel", pixelFontUrl, { size: 64, filter: "linear" });
+const fontFor = (size) => (size >= 24 ? "pixel" : "body");
 
 const WHITE = k.rgb(255, 255, 255);
 const BLACK = k.rgb(0, 0, 0);
@@ -926,7 +926,7 @@ k.scene("game", ({ level = 1, totalScore = 0, stars = [] } = {}) => {
             text: stationIcon(this),
             pos: k.vec2(0, -8),
             size: 36,
-            font: "pixel-big",
+            font: "pixel",
             anchor: "center",
             opacity: idleOven ? 0.45 : 1,
           });
@@ -1756,7 +1756,7 @@ k.scene("gameover", (data) => {
 
   k.wait(0.5, () => {
     jumpscare.add([
-      k.text("GAME OVER", { size: 64, font: "pixel-big" }),
+      k.text("GAME OVER", { size: 64, font: "pixel" }),
       k.pos(GAME_WIDTH / 2, GAME_HEIGHT - 60),
       k.anchor("center"),
       k.color(RED),

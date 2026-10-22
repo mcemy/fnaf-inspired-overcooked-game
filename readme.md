@@ -87,7 +87,7 @@ There are 3 levels. Each one has a shorter shift, tighter order timers and more 
 Requires [Node.js](https://nodejs.org) 20+.
 
 ```bash
-git clone https://github.com/EMILE-FERREIRA-DTI/fnaf-inspired-overcooked-game.git
+git clone https://github.com/mcemy/fnaf-inspired-overcooked-game.git
 cd fnaf-inspired-overcooked-game
 npm install
 npm run dev
@@ -109,7 +109,7 @@ Then open the URL Vite prints (usually `http://localhost:5173`). `npm start` doe
 | --- | --- |
 | [Kaplay](https://kaplayjs.com) | Game engine: scenes, input, drawing, audio |
 | JavaScript | All the game logic (`main.js`) |
-| [Tiny5](https://fonts.google.com/specimen/Tiny5) | Pixel font |
+| [Tiny5](https://fonts.google.com/specimen/Tiny5) + [Fredoka](https://fonts.google.com/specimen/Fredoka) | Pixel font for titles, rounded font for small text |
 | Vite | Dev server and build |
 | Vercel | Hosting |
 
