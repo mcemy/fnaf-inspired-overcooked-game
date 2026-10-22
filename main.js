@@ -1,175 +1,162 @@
 import kaplay from "kaplay";
+import pixelFontUrl from "@fontsource/tiny5/files/tiny5-latin-400-normal.woff2?url";
 
-// ==================== MOBILE DETECTION & ORIENTATION ====================
-const isMobile =
-  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-    navigator.userAgent,
-  ) ||
-  "ontouchstart" in window ||
-  navigator.maxTouchPoints > 0 ||
-  window.innerWidth < 1024 ||
-  window.innerHeight < 600;
-
-let isPortrait = window.innerHeight > window.innerWidth;
-let gameStarted = false;
-let currentK = null;
+// ==================== CONFIG ====================
 const GAME_WIDTH = 1000;
 const GAME_HEIGHT = 500;
+const HUD_HEIGHT = 44;
+const KITCHEN_RIGHT = 785;
+// Receitas entregues necessárias para 1, 2 e 3 estrelas
+const STAR_THRESHOLDS = [2, 4, 6];
+const OVEN_COOK_TIME = 5;
+const OVEN_BURN_TIME = 8;
+const INTERACT_RANGE = 100;
+const PLAYER_SPEED = 280;
+const STATION_SIZE = 85;
 
-// Orientation change handler
-function handleOrientationChange() {
-  isPortrait = window.innerHeight > window.innerWidth;
+// Tempo dos pedidos = tempo da receita * orderTimeFactor
+const LEVELS = [
+  { maxTime: 180, orderTimeFactor: 1, maxOrders: 3, spawnInterval: 10 },
+  { maxTime: 150, orderTimeFactor: 0.7, maxOrders: 3, spawnInterval: 8 },
+  { maxTime: 120, orderTimeFactor: 0.5, maxOrders: 4, spawnInterval: 6 },
+];
 
-  if (!isMobile) return;
-
-  if (isPortrait) {
-    showOrientationWarning();
-  } else {
-    hideOrientationWarning();
-  }
-}
-
-function showOrientationWarning() {
-  let overlay = document.getElementById("orientationOverlay");
-  if (!overlay) {
-    overlay = document.createElement("div");
-    overlay.id = "orientationOverlay";
-    overlay.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.9);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 10000;
-      color: white;
-      font-family: Arial, sans-serif;
-      text-align: center;
-    `;
-
-    overlay.innerHTML = `
-      <div style="font-size: 48px; margin-bottom: 20px;">📱</div>
-      <h1 style="font-size: 32px; margin: 20px 0;">Vire o celular!</h1>
-      <p style="font-size: 20px; margin: 20px; max-width: 80%;">
-        Por favor, gire o dispositivo para o modo paisagem para jogar.
-      </p>
-      <div style="font-size: 60px; margin-top: 30px;">🔄</div>
-    `;
-
-    document.body.appendChild(overlay);
-  }
-  overlay.style.display = "flex";
-}
-
-function hideOrientationWarning() {
-  const overlay = document.getElementById("orientationOverlay");
-  if (overlay) {
-    overlay.style.display = "none";
-  }
-}
-
-window.addEventListener("orientationchange", handleOrientationChange);
-window.addEventListener("resize", handleOrientationChange);
-handleOrientationChange();
-
-let mobileInput = {
-  x: 0,
-  y: 0,
-  action: false,
+const INGREDIENT_ICONS = {
+  dough: "🫓",
+  sauce: "🍅",
+  cheese: "🧀",
+  pepperoni: "🥓",
+  mushroom: "🍄",
 };
 
-if (isMobile) {
-  // Show mobile controls
-  const mobileControls = document.getElementById("mobileControls");
-  if (mobileControls) mobileControls.classList.add("active");
+const RECIPES = [
+  {
+    name: "Margherita",
+    ingredients: ["dough", "sauce", "cheese"],
+    time: 45,
+    points: 100,
+  },
+  {
+    name: "Queijo Duplo",
+    ingredients: ["dough", "sauce", "cheese", "cheese"],
+    time: 45,
+    points: 140,
+  },
+  {
+    name: "Bacon",
+    ingredients: ["dough", "sauce", "cheese", "pepperoni"],
+    time: 50,
+    points: 150,
+  },
+  {
+    name: "Cogumelo",
+    ingredients: ["dough", "sauce", "cheese", "mushroom"],
+    time: 50,
+    points: 150,
+  },
+  {
+    name: "Supreme",
+    ingredients: ["dough", "sauce", "cheese", "pepperoni", "mushroom"],
+    time: 60,
+    points: 200,
+  },
+];
 
-  // Joystick
+const STATIONS = [
+  { x: 75, y: 110, type: "dough", name: "Massa" },
+  { x: 210, y: 110, type: "sauce", name: "Molho" },
+  { x: 345, y: 110, type: "cheese", name: "Queijo" },
+  { x: 480, y: 110, type: "pepperoni", name: "Bacon" },
+  { x: 615, y: 110, type: "mushroom", name: "Cogumelo" },
+  { x: 75, y: 310, type: "oven", name: "Forno 1" },
+  { x: 210, y: 310, type: "oven", name: "Forno 2" },
+  { x: 480, y: 310, type: "delivery", name: "Entrega" },
+  { x: 615, y: 310, type: "trash", name: "Lixo" },
+];
+
+// ==================== DEVICE & ORIENTATION ====================
+const isMobile =
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobi/i.test(
+    navigator.userAgent,
+  ) ||
+  (navigator.maxTouchPoints > 0 &&
+    window.matchMedia("(pointer: coarse)").matches);
+
+let isPortrait = false;
+const orientationOverlay = document.getElementById("orientationOverlay");
+
+function updateOrientation() {
+  isPortrait = window.innerHeight > window.innerWidth;
+  orientationOverlay.classList.toggle("active", isMobile && isPortrait);
+  if (isMobile && isPortrait) activeGame?.setPaused(true);
+}
+
+window.addEventListener("resize", updateOrientation);
+window.addEventListener("orientationchange", updateOrientation);
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) activeGame?.setPaused(true);
+});
+
+// ==================== MOBILE CONTROLS ====================
+const mobileInput = { x: 0, y: 0, action: false };
+const mobileControls = document.getElementById("mobileControls");
+
+if (isMobile) {
   const joystick = document.getElementById("joystick");
   const joystickStick = document.getElementById("joystickStick");
-  let joystickActive = false;
+  let joystickPointer = null;
   let joystickCenter = { x: 0, y: 0 };
+  let joystickRange = 30;
 
-  function handleJoystickStart(e) {
+  function moveJoystick(e) {
+    const dx = e.clientX - joystickCenter.x;
+    const dy = e.clientY - joystickCenter.y;
+    const dist = Math.hypot(dx, dy);
+    const clamp = dist > joystickRange ? joystickRange / dist : 1;
+
+    mobileInput.x = (dx * clamp) / joystickRange;
+    mobileInput.y = (dy * clamp) / joystickRange;
+    joystickStick.style.transform = `translate(${dx * clamp}px, ${dy * clamp}px)`;
+  }
+
+  // Segue só o dedo que começou no joystick, para não pular quando o outro polegar toca no botão
+  function releaseJoystick(e) {
+    if (e.pointerId !== joystickPointer) return;
+    joystickPointer = null;
+    mobileInput.x = 0;
+    mobileInput.y = 0;
+    joystickStick.style.transform = "";
+  }
+
+  joystick.addEventListener("pointerdown", (e) => {
     e.preventDefault();
-    joystickActive = true;
+    if (joystickPointer !== null) return;
+
+    joystickPointer = e.pointerId;
+    joystick.setPointerCapture(e.pointerId);
     const rect = joystick.getBoundingClientRect();
     joystickCenter = {
       x: rect.left + rect.width / 2,
       y: rect.top + rect.height / 2,
     };
-  }
-
-  function handleJoystickMove(e) {
-    if (!joystickActive) return;
-    e.preventDefault();
-
-    const touch = e.touches ? e.touches[0] : e;
-    const dx = touch.clientX - joystickCenter.x;
-    const dy = touch.clientY - joystickCenter.y;
-
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const maxDistance = 30;
-
-    if (distance > maxDistance) {
-      const angle = Math.atan2(dy, dx);
-      mobileInput.x = Math.cos(angle);
-      mobileInput.y = Math.sin(angle);
-
-      joystickStick.style.left = `${30 + Math.cos(angle) * maxDistance}px`;
-      joystickStick.style.top = `${30 + Math.sin(angle) * maxDistance}px`;
-    } else {
-      mobileInput.x = dx / maxDistance;
-      mobileInput.y = dy / maxDistance;
-
-      joystickStick.style.left = `${30 + dx}px`;
-      joystickStick.style.top = `${30 + dy}px`;
-    }
-  }
-
-  function handleJoystickEnd(e) {
-    e.preventDefault();
-    joystickActive = false;
-    mobileInput.x = 0;
-    mobileInput.y = 0;
-    joystickStick.style.left = "30px";
-    joystickStick.style.top = "30px";
-  }
-
-  joystick.addEventListener("touchstart", handleJoystickStart, {
-    passive: false,
+    joystickRange = (rect.width - joystickStick.offsetWidth) / 2;
+    moveJoystick(e);
   });
-  joystick.addEventListener("touchmove", handleJoystickMove, {
-    passive: false,
+
+  joystick.addEventListener("pointermove", (e) => {
+    if (e.pointerId === joystickPointer) moveJoystick(e);
   });
-  joystick.addEventListener("touchend", handleJoystickEnd, { passive: false });
-  joystick.addEventListener("mousedown", handleJoystickStart);
-  document.addEventListener("mousemove", handleJoystickMove);
-  document.addEventListener("mouseup", handleJoystickEnd);
+  joystick.addEventListener("pointerup", releaseJoystick);
+  joystick.addEventListener("pointercancel", releaseJoystick);
+  joystick.addEventListener("lostpointercapture", releaseJoystick);
 
-  // Action Button
-  const actionButton = document.getElementById("actionButton");
-  let actionCooldown = false;
-
-  function handleActionPress(e) {
-    e.preventDefault();
-    if (actionCooldown) return;
-
-    mobileInput.action = true;
-    actionCooldown = true;
-
-    setTimeout(() => {
-      actionCooldown = false;
-    }, 200);
-  }
-
-  actionButton.addEventListener("touchstart", handleActionPress, {
-    passive: false,
-  });
-  actionButton.addEventListener("mousedown", handleActionPress);
+  document
+    .getElementById("actionButton")
+    .addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      mobileInput.action = true;
+    });
 }
 
 // Remove loading indicator
@@ -178,1344 +165,1680 @@ window.addEventListener("load", () => {
   if (loading) loading.remove();
 });
 
-// ==================== AUDIO SETUP ====================
-const audioContext = {
-  bgm: new Audio("/audio/musica-de-fundo.mp3"),
-  start: new Audio("/audio/botao-iniciar.mp3"),
-  interaction: new Audio("/audio/interacao-item-forno.mp3"),
-  error: new Audio("/audio/erro-receita.mp3"),
-  levelComplete: new Audio("/audio/kids-cheering.mp3"),
-};
-
-let audioUnlocked = false;
-let audioUnlocking = false;
-const pendingSfxQueue = [];
-
-function playSfx(key, options = {}) {
-  const audio = audioContext[key];
-  if (!audio) return;
-
-  const { allowOverlap = true } = options;
-  const target = allowOverlap ? audio.cloneNode(true) : audio;
-  if (!allowOverlap) {
-    target.currentTime = 0;
-  }
-
-  target.volume = audio.volume ?? 0.6;
-  const playPromise = target.play();
-  if (playPromise && typeof playPromise.catch === "function") {
-    playPromise.catch(() => {
-      if (!audioUnlocked) {
-        pendingSfxQueue.push(() => playSfx(key, options));
-      }
-    });
-  }
-}
-
-function flushPendingSfx() {
-  if (!audioUnlocked || !pendingSfxQueue.length) return;
-  while (pendingSfxQueue.length) {
-    const retry = pendingSfxQueue.shift();
-    if (typeof retry === "function") {
-      retry();
-    }
-  }
-}
-
-function startBackgroundMusic(forceRestart = false) {
-  if (!audioContext.bgm) return;
-  if (!audioUnlocked && !forceRestart) return;
-
-  const music = audioContext.bgm;
-  music.loop = true;
-
-  if (forceRestart) {
-    music.pause();
-    music.currentTime = 0;
-  }
-
-  if (!music.paused && !forceRestart) return;
-
-  const playPromise = music.play();
-  if (playPromise && typeof playPromise.catch === "function") {
-    playPromise.catch(() => {});
-  }
-}
-
-function unlockAudio() {
-  if (audioUnlocked || audioUnlocking) return;
-  audioUnlocking = true;
-
-  let unlockedAny = false;
-
-  const warmups = Object.values(audioContext).map((audio) => {
-    if (!audio) return Promise.resolve();
-
-    const originalMuted = audio.muted;
-    audio.muted = true;
-
-    return audio
-      .play()
-      .then(() => {
-        unlockedAny = true;
-        audio.pause();
-        audio.currentTime = 0;
-      })
-      .catch(() => {})
-      .finally(() => {
-        audio.muted = originalMuted;
-      });
-  });
-
-  Promise.all(warmups)
-    .then(() => {
-      if (unlockedAny) {
-        audioUnlocked = true;
-        startBackgroundMusic(true);
-        flushPendingSfx();
-        window.removeEventListener("pointerdown", unlockAudio);
-        window.removeEventListener("keydown", unlockAudio);
-        window.removeEventListener("touchstart", unlockAudio);
-      }
-    })
-    .finally(() => {
-      audioUnlocking = false;
-    });
-}
-
-window.addEventListener("pointerdown", unlockAudio);
-window.addEventListener("keydown", unlockAudio);
-window.addEventListener("touchstart", unlockAudio);
-
-// Configure audio
-Object.values(audioContext).forEach((audio) => {
-  if (audio) {
-    audio.volume = audio === audioContext.bgm ? 0.35 : 0.8;
-    audio.crossOrigin = "anonymous";
-  }
-});
-
 // ==================== KAPLAY INIT ====================
 const k = kaplay({
   canvas: document.getElementById("game-canvas"),
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
-  background: [29, 29, 68],
+  background: [20, 18, 31],
   letterbox: true,
   stretch: false,
-  crisp: true,
-  font: "sans-serif",
+  font: "pixel",
   global: false,
 });
 
-currentK = k;
+// A fonte pixel fica borrada quando o atlas é muito maior que o texto,
+// então textos pequenos e grandes usam atlas de tamanhos diferentes
+k.loadFont("pixel", pixelFontUrl, { size: 32, filter: "linear" });
+k.loadFont("pixel-big", pixelFontUrl, { size: 64, filter: "linear" });
+const fontFor = (size) => (size >= 28 ? "pixel-big" : "pixel");
+
+const WHITE = k.rgb(255, 255, 255);
+const BLACK = k.rgb(0, 0, 0);
+const INK = k.rgb(20, 16, 24);
+const ORANGE = k.rgb(255, 165, 0);
+const GREEN = k.rgb(76, 175, 80);
+const RED = k.rgb(235, 64, 52);
+const YELLOW = k.rgb(255, 221, 87);
+const BLUE = k.rgb(100, 200, 255);
+const PURPLE = k.rgb(200, 120, 255);
+const GRAY = k.rgb(170, 170, 185);
+
+// ==================== AUDIO ====================
+k.loadMusic("bgm", "/audio/musica-de-fundo.mp3");
+k.loadSound("start", "/audio/botao-iniciar.mp3");
+k.loadSound("interaction", "/audio/interacao-item-forno.mp3");
+k.loadSound("error", "/audio/erro-receita.mp3");
+k.loadSound("levelComplete", "/audio/level-complete.wav");
+k.loadSound("victory", "/audio/kids-cheering.mp3");
+
+let muted = k.getData("muted", false);
+let music = null;
+
+function playSfx(name) {
+  k.play(name, { volume: 0.8 });
+}
+
+// O navegador só libera áudio depois de uma interação, então tentamos de novo a cada gesto
+function startMusic() {
+  k.audioCtx.resume();
+  if (!music) {
+    music = k.play("bgm", { loop: true, volume: 0.35 });
+  } else if (music.paused) {
+    music.paused = false;
+  }
+}
+
+window.addEventListener("click", startMusic);
+window.addEventListener("touchend", startMusic);
+window.addEventListener("keydown", startMusic);
+
+function applyVolume() {
+  k.setVolume(muted ? 0 : 1);
+}
+
+function toggleMute() {
+  muted = !muted;
+  k.setData("muted", muted);
+  applyVolume();
+}
+
+applyVolume();
+
+// Grito sintetizado do jumpscare
+function playScreech() {
+  if (muted) return;
+
+  const ctx = k.audioCtx;
+  const duration = 1.3;
+  const now = ctx.currentTime;
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.35, now + 0.03);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  gain.connect(ctx.destination);
+
+  const osc = ctx.createOscillator();
+  osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(900, now);
+  osc.frequency.exponentialRampToValueAtTime(160, now + duration);
+
+  const wobble = ctx.createOscillator();
+  wobble.frequency.value = 38;
+  const wobbleGain = ctx.createGain();
+  wobbleGain.gain.value = 260;
+  wobble.connect(wobbleGain).connect(osc.frequency);
+
+  const noise = ctx.createBufferSource();
+  const buffer = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
+  const samples = buffer.getChannelData(0);
+  for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+  noise.buffer = buffer;
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.value = 0.4;
+
+  osc.connect(gain);
+  noise.connect(noiseGain).connect(gain);
+  [osc, wobble, noise].forEach((node) => {
+    node.start(now);
+    node.stop(now + duration);
+  });
+}
+
+// ==================== SHARED STATE ====================
+// Cena de jogo ativa (para pausar ao trocar de aba ou girar o celular)
+let activeGame = null;
+
+function enterScene({ inGame }) {
+  activeGame = null;
+  mobileInput.action = false;
+  mobileControls.classList.toggle("active", isMobile && inGame);
+  k.setCursor("default");
+  addSoundButton();
+}
+
+function saveHighScore(score) {
+  const highScore = k.getData("highScore", 0);
+  if (score > highScore) {
+    k.setData("highScore", score);
+    return { highScore: score, isNew: true };
+  }
+  return { highScore, isNew: false };
+}
+
+function starsForRecipes(recipes) {
+  return STAR_THRESHOLDS.filter((needed) => recipes >= needed).length;
+}
+
+function starRow(count) {
+  return "⭐".repeat(count) + "☆".repeat(STAR_THRESHOLDS.length - count);
+}
+
+// ==================== DRAWING HELPERS ====================
+function drawCheckerFloor(x, y, width, height, tile = 50) {
+  for (let row = 0; row * tile < height; row++) {
+    for (let col = 0; col * tile < width; col++) {
+      k.drawRect({
+        pos: k.vec2(x + col * tile, y + row * tile),
+        width: Math.min(tile, width - col * tile),
+        height: Math.min(tile, height - row * tile),
+        color: (row + col) % 2 === 0 ? k.rgb(42, 40, 56) : k.rgb(70, 68, 86),
+      });
+    }
+  }
+}
+
+// Bordas escurecidas em faixas finas que não se sobrepõem
+function drawVignette(x, y, width, height, strength = 0.5) {
+  const bands = 16;
+  const bandSize = 4;
+  for (let i = 0; i < bands; i++) {
+    const opacity = strength * (1 - i / bands) ** 2;
+    const inset = i * bandSize;
+    const innerWidth = width - inset * 2;
+    const innerHeight = height - inset * 2;
+    const strips = [
+      [x + inset, y + inset, innerWidth, bandSize],
+      [x + inset, y + height - inset - bandSize, innerWidth, bandSize],
+      [x + inset, y + inset + bandSize, bandSize, innerHeight - bandSize * 2],
+      [
+        x + width - inset - bandSize,
+        y + inset + bandSize,
+        bandSize,
+        innerHeight - bandSize * 2,
+      ],
+    ];
+    strips.forEach(([sx, sy, w, h]) => {
+      k.drawRect({
+        pos: k.vec2(sx, sy),
+        width: w,
+        height: h,
+        color: BLACK,
+        opacity,
+      });
+    });
+  }
+}
+
+// Freddy desenhado com formas simples; (0, 0) fica no centro do corpo
+function drawFreddy({ facing = 1, bob = 0, scary = false } = {}) {
+  const brown = k.rgb(150, 92, 48);
+  const dark = k.rgb(92, 54, 26);
+  const light = k.rgb(214, 162, 104);
+  const black = k.rgb(18, 14, 18);
+  const edge = { width: 1.5, color: dark };
+  const y = bob;
+
+  k.drawEllipse({
+    pos: k.vec2(0, 23),
+    radiusX: 16,
+    radiusY: 5,
+    color: BLACK,
+    opacity: 0.35,
+  });
+
+  // Pernas e corpo
+  k.drawRect({
+    pos: k.vec2(-9, 13 + y),
+    width: 7,
+    height: 9,
+    radius: 2,
+    color: dark,
+  });
+  k.drawRect({
+    pos: k.vec2(2, 13 + y),
+    width: 7,
+    height: 9,
+    radius: 2,
+    color: dark,
+  });
+  k.drawRect({
+    pos: k.vec2(0, 5 + y),
+    width: 28,
+    height: 22,
+    radius: 9,
+    anchor: "center",
+    color: brown,
+    outline: edge,
+  });
+  k.drawEllipse({
+    pos: k.vec2(0, 8 + y),
+    radiusX: 9,
+    radiusY: 6.5,
+    color: light,
+  });
+
+  // Gravata borboleta
+  k.drawTriangle({
+    p1: k.vec2(0, -4 + y),
+    p2: k.vec2(-6, -7 + y),
+    p3: k.vec2(-6, -1 + y),
+    color: black,
+  });
+  k.drawTriangle({
+    p1: k.vec2(0, -4 + y),
+    p2: k.vec2(6, -7 + y),
+    p3: k.vec2(6, -1 + y),
+    color: black,
+  });
+
+  // Orelhas e cabeça
+  [-11, 11].forEach((x) => {
+    k.drawCircle({
+      pos: k.vec2(x, -26 + y),
+      radius: 5,
+      color: brown,
+      outline: edge,
+    });
+    k.drawCircle({ pos: k.vec2(x, -26 + y), radius: 2.5, color: dark });
+  });
+  k.drawCircle({
+    pos: k.vec2(0, -15 + y),
+    radius: 14,
+    color: brown,
+    outline: edge,
+  });
+  k.drawEllipse({
+    pos: k.vec2(0, -8 + y),
+    radiusX: 8,
+    radiusY: 5.5,
+    color: light,
+  });
+  k.drawEllipse({
+    pos: k.vec2(0, -11 + y),
+    radiusX: 3,
+    radiusY: 2,
+    color: black,
+  });
+
+  if (scary) {
+    k.drawRect({
+      pos: k.vec2(0, -4 + y),
+      width: 12,
+      height: 6,
+      radius: 1,
+      anchor: "center",
+      color: black,
+    });
+    [-4.5, -1.5, 1.5, 4.5].forEach((x) => {
+      k.drawRect({
+        pos: k.vec2(x, -6.5 + y),
+        width: 2,
+        height: 2,
+        anchor: "center",
+        color: WHITE,
+      });
+    });
+    [-5.5, 5.5].forEach((x) => {
+      k.drawCircle({ pos: k.vec2(x, -19 + y), radius: 4, color: black });
+      k.drawCircle({
+        pos: k.vec2(x, -19 + y),
+        radius: 1.6,
+        color: RED,
+        opacity: 0.5,
+      });
+      k.drawCircle({ pos: k.vec2(x, -19 + y), radius: 0.9, color: WHITE });
+    });
+  } else {
+    [-5.5, 5.5].forEach((x) => {
+      k.drawCircle({ pos: k.vec2(x, -19 + y), radius: 3.6, color: WHITE });
+      k.drawCircle({
+        pos: k.vec2(x + facing * 1.2, -19 + y),
+        radius: 1.8,
+        color: k.rgb(40, 80, 170),
+      });
+    });
+  }
+
+  // Cartola
+  k.drawRect({
+    pos: k.vec2(0, -28 + y),
+    width: 18,
+    height: 3,
+    anchor: "center",
+    color: black,
+  });
+  k.drawRect({
+    pos: k.vec2(0, -34 + y),
+    width: 11,
+    height: 10,
+    anchor: "center",
+    color: black,
+  });
+}
+
+// ==================== UI HELPERS ====================
+function addBackdrop({ dim = 0.5 } = {}) {
+  return k.add([
+    k.z(0),
+    {
+      draw() {
+        drawCheckerFloor(0, 0, GAME_WIDTH, GAME_HEIGHT);
+        k.drawRect({
+          width: GAME_WIDTH,
+          height: GAME_HEIGHT,
+          color: BLACK,
+          opacity: dim,
+        });
+        drawVignette(0, 0, GAME_WIDTH, GAME_HEIGHT, 0.6);
+      },
+    },
+  ]);
+}
+
+// Luz piscando de vez em quando, como as lâmpadas da pizzaria
+function addLightFlicker(
+  area = { x: 0, y: 0, width: GAME_WIDTH, height: GAME_HEIGHT },
+) {
+  let nextFlicker = k.rand(4, 9);
+  let flickerTime = 0;
+
+  return k.add([
+    k.z(300),
+    {
+      update() {
+        nextFlicker -= k.dt();
+        flickerTime = Math.max(0, flickerTime - k.dt());
+        if (nextFlicker <= 0) {
+          flickerTime = 0.35;
+          nextFlicker = k.rand(6, 14);
+        }
+      },
+      draw() {
+        if (flickerTime > 0 && Math.sin(flickerTime * 60) > 0) {
+          k.drawRect({
+            pos: k.vec2(area.x, area.y),
+            width: area.width,
+            height: area.height,
+            color: BLACK,
+            opacity: 0.4,
+          });
+        }
+      },
+    },
+  ]);
+}
+
+function addPanel(width, height, pos, parent = k) {
+  return parent.add([
+    k.rect(width, height, { radius: 16 }),
+    k.pos(pos),
+    k.anchor("center"),
+    k.color(22, 18, 34),
+    k.opacity(0.94),
+    k.outline(4, ORANGE),
+    k.z(10),
+  ]);
+}
+
+function addLabel(text, pos, { size = 20, color = WHITE, parent = k } = {}) {
+  return parent.add([
+    k.text(text, { size, font: fontFor(size) }),
+    k.pos(pos),
+    k.anchor("center"),
+    k.color(color),
+    k.z(11),
+  ]);
+}
+
+function addButton(
+  text,
+  pos,
+  onPress,
+  { width = 240, height = 54, size = 24, color = GREEN, parent = k } = {},
+) {
+  const button = parent.add([
+    k.rect(width, height, { radius: 12 }),
+    k.pos(pos),
+    k.anchor("center"),
+    k.color(color),
+    k.outline(3, INK),
+    k.area(),
+    k.scale(1),
+    k.z(20),
+  ]);
+
+  button.label = button.add([
+    k.text(text, { size, font: fontFor(size) }),
+    k.anchor("center"),
+  ]);
+
+  button.onHover(() => {
+    button.scale = k.vec2(1.06);
+    k.setCursor("pointer");
+  });
+  button.onHoverEnd(() => {
+    button.scale = k.vec2(1);
+    k.setCursor("default");
+  });
+  button.onClick(onPress);
+
+  return button;
+}
+
+function addSoundButton() {
+  const icon = () => (muted ? "🔇" : "🔊");
+  const toggle = () => {
+    toggleMute();
+    button.label.text = icon();
+  };
+
+  const button = addButton(icon(), k.vec2(962, 22), toggle, {
+    width: 40,
+    height: 32,
+    size: 18,
+    color: k.rgb(60, 54, 80),
+  });
+  button.z = 150;
+  k.onKeyPress("m", toggle);
+  return button;
+}
+
+function showFeedback(
+  text,
+  pos,
+  { color = WHITE, size = 16, duration = 0.9, rise = true } = {},
+) {
+  const label = k.add([
+    k.text(text, { size, font: fontFor(size) }),
+    k.pos(pos),
+    k.anchor("center"),
+    k.color(color),
+    k.opacity(1),
+    k.scale(0.4),
+    ...(rise ? [k.move(k.UP, 30)] : []),
+    k.lifespan(duration, { fade: 0.3 }),
+    k.z(200),
+  ]);
+  k.tween(0.4, 1, 0.2, (s) => (label.scale = k.vec2(s)), k.easings.easeOutBack);
+  return label;
+}
+
+function addStars(count, y, { size = 48, spacing = 70 } = {}) {
+  [-1, 0, 1].forEach((offset, i) => {
+    const earned = i < count;
+    const star = k.add([
+      k.text("⭐", { size, font: fontFor(size) }),
+      k.pos(GAME_WIDTH / 2 + offset * spacing, y),
+      k.anchor("center"),
+      k.opacity(earned ? 1 : 0.18),
+      k.scale(earned ? 0 : 1),
+      k.z(11),
+    ]);
+
+    if (earned) {
+      k.wait(0.3 + i * 0.25, () => {
+        playSfx("interaction");
+        k.tween(
+          0,
+          1,
+          0.3,
+          (s) => (star.scale = k.vec2(s)),
+          k.easings.easeOutBack,
+        );
+      });
+    }
+  });
+}
 
 // ==================== MENU SCENE ====================
 k.scene("menu", () => {
-  gameStarted = false;
-  if (audioUnlocked) {
-    startBackgroundMusic();
-  } else {
-    unlockAudio();
-  }
+  enterScene({ inGame: false });
+  addBackdrop({ dim: 0.45 });
+  addLightFlicker();
 
-  if (isMobile && isPortrait) {
-    showOrientationWarning();
-  } else {
-    hideOrientationWarning();
-  }
-
+  // Freddy grandão balançando
   k.add([
-    k.text("🍕 FNAF PIZZA KITCHEN 🐻", { size: isMobile ? 32 : 36 }),
-    k.pos(k.center().x, isMobile ? 55 : 65),
-    k.anchor("center"),
-    k.color(255, 165, 0),
+    k.pos(200, 300),
+    k.scale(4.2),
+    k.z(5),
+    {
+      draw() {
+        drawFreddy({ bob: Math.sin(k.time() * 2) * 1.5 });
+      },
+    },
   ]);
 
-  k.add([
-    k.text("Estilo Overcooked!", { size: isMobile ? 20 : 22 }),
-    k.pos(k.center().x, isMobile ? 95 : 110),
-    k.anchor("center"),
-  ]);
+  addLabel("FNAF PIZZA KITCHEN", k.vec2(620, 70), { size: 46, color: ORANGE });
+  addLabel("🍕 Estilo Overcooked! 🐻", k.vec2(620, 115), { size: 22 });
 
-  k.add([
-    k.text("CONCLUA OS 3 NÍVEIS", { size: isMobile ? 18 : 20 }),
-    k.pos(k.center().x, isMobile ? 135 : 155),
-    k.anchor("center"),
-    k.color(255, 165, 0),
-  ]);
-
-  // Um único botão para iniciar a campanha
-  const startBtn = k.add([
-    k.rect(isMobile ? 260 : 320, isMobile ? 55 : 65),
-    k.pos(k.center().x, isMobile ? 200 : 235),
-    k.anchor("center"),
-    k.area(),
-    k.color(100, 100, 150),
-    k.outline(3, k.rgb(255, 165, 0)),
-  ]);
-
-  k.add([
-    k.text("INICIAR", { size: isMobile ? 22 : 24 }),
-    k.pos(k.center().x, isMobile ? 200 : 235),
-    k.anchor("center"),
-    k.color(76, 175, 80),
-  ]);
-
-  const startGame = () => {
-    unlockAudio();
-    playSfx("start", { allowOverlap: false });
-    k.go("game", { level: 1, difficulty: "easy", maxTime: 180 });
-  };
-
-  startBtn.onClick(startGame);
-
-  startBtn.onHover(() => {
-    startBtn.color = k.rgb(150, 150, 200);
-  });
-
-  startBtn.onHoverEnd(() => {
-    startBtn.color = k.rgb(100, 100, 150);
-  });
-
-  k.add([
-    k.text("COMO JOGAR:", { size: isMobile ? 18 : 20 }),
-    k.pos(k.center().x, isMobile ? 275 : 310),
-    k.anchor("center"),
-    k.color(255, 255, 0),
-  ]);
+  addPanel(500, 210, k.vec2(620, 255));
+  addLabel("COMO JOGAR", k.vec2(620, 172), { size: 22, color: YELLOW });
 
   const instructions = [
-    isMobile ? "🕹️ Joystick - Mover" : "WASD - Mover Freddy",
-    isMobile ? "⚡ Botão Verde - Ação" : "ESPAÇO - Pegar/Usar estação",
-    "1. Complete pelo menos 6 receitas antes do tempo acabar",
-    "2. Cada nível tem diferentes dificuldades",
-    "3. Quanto mais rápido, melhor sua pontuação!",
+    isMobile ? "🕹️ Joystick - Mover" : "WASD / Setas - Mover",
+    isMobile
+      ? "⚡ Botão verde - Usar estação"
+      : "ESPAÇO - Usar estação  ·  ESC - Pausar",
+    "Massa → molho → recheio → forno → entrega",
+    `${STAR_THRESHOLDS[0]} receitas ⭐  ·  ${STAR_THRESHOLDS[1]} ⭐⭐  ·  ${STAR_THRESHOLDS[2]} ⭐⭐⭐`,
+    "Sem estrelas... o Freddy fica bravo! 🐻",
   ];
 
   instructions.forEach((line, i) => {
-    k.add([
-      k.text(line, { size: isMobile ? 15 : 17 }),
-      k.pos(k.center().x, (isMobile ? 310 : 350) + i * (isMobile ? 24 : 26)),
-      k.anchor("center"),
-      k.z(1),
-    ]);
+    addLabel(line, k.vec2(620, 206 + i * 28), { size: 17 });
   });
 
-  k.onKeyPress("space", startGame);
-  k.onClick(startGame);
-  if (isMobile) {
-    k.onTouchStart(startGame);
+  let starting = false;
+  const startGame = () => {
+    if (starting) return;
+    starting = true;
+    startMusic();
+    playSfx("start");
+    k.go("game", { level: 1, totalScore: 0, stars: [] });
+  };
+
+  addButton("INICIAR", k.vec2(620, 405), startGame, {
+    width: 260,
+    height: 58,
+    size: 28,
+  });
+
+  const highScore = k.getData("highScore", 0);
+  if (highScore > 0) {
+    addLabel(`Recorde: ${highScore}`, k.vec2(620, 460), {
+      size: 17,
+      color: GRAY,
+    });
   }
+
+  k.onKeyPress("space", startGame);
+  k.onKeyPress("enter", startGame);
 });
 
 // ==================== GAME SCENE ====================
-k.scene(
-  "game",
-  (levelData = { level: 1, difficulty: "easy", maxTime: 180 }) => {
-    if (isMobile && isPortrait) {
-      showOrientationWarning();
-      k.go("menu");
-      return;
-    }
+k.scene("game", ({ level = 1, totalScore = 0, stars = [] } = {}) => {
+  enterScene({ inGame: true });
 
-    gameStarted = true;
-    hideOrientationWarning();
-    if (audioUnlocked) {
-      startBackgroundMusic();
+  const levelConfig = LEVELS[level - 1];
+  let score = 0;
+  let combo = 0;
+  let gameTime = levelConfig.maxTime;
+  let completedRecipes = 0;
+  let orders = [];
+  let spawnTimer = 0;
+  let nearestStation = null;
+  let paused = false;
+  let levelOver = false;
+  let pauseLayer = null;
+
+  // ==================== KITCHEN ====================
+  k.add([
+    k.z(0),
+    {
+      draw() {
+        drawCheckerFloor(
+          0,
+          HUD_HEIGHT,
+          KITCHEN_RIGHT,
+          GAME_HEIGHT - HUD_HEIGHT,
+        );
+
+        // Balcão entre as estações de ingredientes e os fornos
+        k.drawRect({
+          pos: k.vec2(20, 200),
+          width: KITCHEN_RIGHT - 40,
+          height: 16,
+          radius: 4,
+          color: k.rgb(120, 66, 30),
+          outline: { width: 2, color: INK },
+        });
+        k.drawRect({
+          pos: k.vec2(22, 201),
+          width: KITCHEN_RIGHT - 44,
+          height: 4,
+          color: k.rgb(170, 104, 56),
+        });
+      },
+    },
+  ]);
+
+  k.add([
+    k.z(150),
+    {
+      draw() {
+        drawVignette(
+          0,
+          HUD_HEIGHT,
+          KITCHEN_RIGHT,
+          GAME_HEIGHT - HUD_HEIGHT,
+          0.45,
+        );
+      },
+    },
+  ]);
+
+  addLightFlicker({
+    x: 0,
+    y: HUD_HEIGHT,
+    width: KITCHEN_RIGHT,
+    height: GAME_HEIGHT - HUD_HEIGHT,
+  });
+
+  // ==================== STATIONS ====================
+  const STATION_STYLES = {
+    oven: { body: k.rgb(72, 72, 86), icon: "🔥" },
+    delivery: { body: k.rgb(46, 104, 72), icon: "🍽️" },
+    trash: { body: k.rgb(64, 64, 70), icon: "🗑️" },
+  };
+
+  function ovenStatus(oven) {
+    if (!oven.item) return "empty";
+    if (oven.item.burnt) return "burnt";
+    return oven.elapsed < OVEN_COOK_TIME ? "cooking" : "done";
+  }
+
+  function drawOvenBar(oven) {
+    const status = ovenStatus(oven);
+    if (status === "empty") return;
+
+    const width = 70;
+    const pos = k.vec2(-width / 2, -STATION_SIZE / 2 - 14);
+    k.drawRect({
+      pos,
+      width,
+      height: 8,
+      radius: 4,
+      color: BLACK,
+      opacity: 0.6,
+    });
+
+    if (status === "cooking") {
+      k.drawRect({
+        pos,
+        width: width * (oven.elapsed / OVEN_COOK_TIME),
+        height: 8,
+        radius: 4,
+        color: ORANGE,
+      });
+    } else if (status === "done") {
+      const burnProgress = (oven.elapsed - OVEN_COOK_TIME) / OVEN_BURN_TIME;
+      const blinking = burnProgress > 0.5 && Math.sin(k.time() * 18) > 0;
+      k.drawRect({ pos, width, height: 8, radius: 4, color: GREEN });
+      k.drawRect({
+        pos,
+        width: width * burnProgress,
+        height: 8,
+        radius: 4,
+        color: blinking ? YELLOW : RED,
+      });
     } else {
-      unlockAudio();
-    }
-
-    // Background
-    k.add([
-      k.rect(k.width(), k.height()),
-      k.pos(0, 0),
-      k.color(58, 58, 82),
-      k.z(0),
-    ]);
-
-    // Counter
-    k.add([k.rect(k.width() - 40, 10), k.pos(20, 205), k.color(139, 69, 19)]);
-
-    // ==================== STATIONS ====================
-    const stationSize = 85;
-    const iconSize = 38;
-
-    const stations = [
-      { x: 75, y: 110, type: "dough", icon: "🫓", name: "Massa" },
-      { x: 210, y: 110, type: "sauce", icon: "🍅", name: "Molho" },
-      { x: 345, y: 110, type: "cheese", icon: "🧀", name: "Queijo" },
-      { x: 480, y: 110, type: "pepperoni", icon: "🥓", name: "Bacon" },
-      { x: 615, y: 110, type: "mushroom", icon: "🍄", name: "Cogumelo" },
-      { x: 75, y: 310, type: "oven", icon: "🔥", name: "Forno 1" },
-      { x: 210, y: 310, type: "oven", icon: "🔥", name: "Forno 2" },
-      { x: 480, y: 310, type: "delivery", icon: "🍽️", name: "Entrega" },
-      { x: 615, y: 310, type: "trash", icon: "🗑️", name: "Lixo" },
-    ];
-
-    const stationObjects = [];
-
-    stations.forEach((s) => {
-      const base = k.add([
-        k.rect(stationSize, stationSize),
-        k.pos(s.x, s.y),
-        k.anchor("center"),
-        k.color(85, 85, 85),
-        k.outline(2, k.rgb(255, 165, 0)),
-        k.area(),
-        k.z(5),
-        "station",
-        {
-          stationType: s.type,
-          working: false,
-          timer: 0,
-          item: null,
-        },
-      ]);
-
-      const icon = k.add([
-        k.text(s.icon, { size: iconSize }),
-        k.pos(s.x, s.y - 6),
-        k.anchor("center"),
-        k.z(6),
-      ]);
-
-      k.add([
-        k.text(s.name, { size: s.name === "Cogumelo" ? 13 : 15 }),
-        k.pos(s.x, s.y + stationSize / 2 - 12),
-        k.anchor("center"),
-        k.z(6),
-      ]);
-
-      stationObjects.push({ base, icon });
-    });
-
-    // ==================== PLAYER ====================
-    const playerSize = 34;
-
-    const player = k.add([
-      k.rect(playerSize, playerSize),
-      k.pos(345, 390),
-      k.anchor("center"),
-      k.area(),
-      k.color(160, 82, 45),
-      k.z(10),
-      {
-        heldItem: null,
-        speed: 280,
-      },
-    ]);
-
-    k.add([
-      k.circle(playerSize * 0.375),
-      k.pos(player.pos.x, player.pos.y - 5),
-      k.anchor("center"),
-      k.color(0, 0, 0),
-      k.z(11),
-      "playerHead",
-    ]);
-
-    k.add([
-      k.text("FREDDY", { size: 13 }),
-      k.pos(player.pos.x, player.pos.y + playerSize / 2 + 10),
-      k.anchor("center"),
-      k.color(255, 165, 0),
-      k.z(11),
-      "playerName",
-    ]);
-
-    const heldItemDisplay = k.add([
-      k.text("", { size: 24 }),
-      k.pos(player.pos.x, player.pos.y - 30),
-      k.anchor("center"),
-      k.z(12),
-      "heldItem",
-    ]);
-
-    const nearStationIndicator = k.add([
-      k.text("⬇️ " + (isMobile ? "⚡" : "ESPAÇO") + " ⬇️", {
-        size: 16,
-      }),
-      k.pos(player.pos.x, player.pos.y + 40),
-      k.anchor("center"),
-      k.color(255, 255, 0),
-      k.z(12),
-      k.opacity(0),
-      "indicator",
-    ]);
-
-    // ==================== GAME STATE ====================
-    const RECIPES_NEEDED = 6;
-    const currentLevel = levelData.level;
-    const currentDifficulty = levelData.difficulty;
-    let score = 0;
-    let combo = 0;
-    let gameTime = levelData.maxTime;
-    let orders = [];
-    let nearestStation = null;
-    let completedRecipes = 0;
-    let levelComplete = false;
-
-    // ==================== UI (TOP BAR) ====================
-    const uiSize = 18;
-
-    const scoreText = k.add([
-      k.text("PONTOS: 0", { size: uiSize }),
-      k.pos(20, 14),
-      k.color(255, 165, 0),
-      k.z(100),
-    ]);
-
-    const comboText = k.add([
-      k.text("COMBO: 0x", { size: uiSize }),
-      k.pos(190, 14),
-      k.color(76, 175, 80),
-      k.z(100),
-    ]);
-
-    const recipesText = k.add([
-      k.text(`RECEITAS: 0/${RECIPES_NEEDED}`, { size: uiSize }),
-      k.pos(340, 14),
-      k.color(100, 200, 255),
-      k.z(100),
-    ]);
-
-    const timerText = k.add([
-      k.text("TEMPO: 3:00", { size: 22 }),
-      k.pos(570, 14),
-      k.anchor("center"),
-      k.z(100),
-    ]);
-
-    const levelText = k.add([
-      k.text(`NÍVEL ${currentLevel}`, { size: uiSize }),
-      k.pos(980, 14),
-      k.anchor("topright"),
-      k.color(200, 100, 255),
-      k.z(100),
-    ]);
-
-    // ==================== RECIPES ====================
-    const recipes = [
-      {
-        name: "Margherita",
-        ingredients: ["dough", "sauce", "cheese"],
-        time: 45,
-        points: 100,
-      },
-      {
-        name: "Queijo Duplo",
-        ingredients: ["dough", "sauce", "cheese", "cheese"],
-        time: 45,
-        points: 140,
-      },
-      {
-        name: "Bacon",
-        ingredients: ["dough", "sauce", "cheese", "pepperoni"],
-        time: 50,
-        points: 150,
-      },
-      {
-        name: "Cogumelo",
-        ingredients: ["dough", "sauce", "cheese", "mushroom"],
-        time: 50,
-        points: 150,
-      },
-      {
-        name: "Supreme",
-        ingredients: ["dough", "sauce", "cheese", "pepperoni", "mushroom"],
-        time: 60,
-        points: 200,
-      },
-    ];
-
-    // Adjust difficulty - tempo diminui a cada nível
-    let baseOrderTime = 45;
-    let maxOrders = 3;
-    let spawnInterval = 10;
-
-    if (currentDifficulty === "normal") {
-      baseOrderTime = 30; // Nível 2: 30s por receita
-      maxOrders = 3;
-      spawnInterval = 8;
-    } else if (currentDifficulty === "hard") {
-      baseOrderTime = 20; // Nível 3: 20s por receita (muito rápido!)
-      maxOrders = 4;
-      spawnInterval = 6;
-    }
-
-    // ==================== ORDERS ====================
-    function generateOrder() {
-      if (orders.length >= maxOrders) return;
-
-      const recipe = k.choose(recipes);
-      orders.push({
-        id: Date.now() + Math.random(),
-        recipe: recipe,
-        timeLeft: baseOrderTime,
-        maxTime: baseOrderTime,
+      k.drawRect({
+        pos,
+        width,
+        height: 8,
+        radius: 4,
+        color: k.rgb(60, 60, 60),
       });
-    }
-
-    generateOrder();
-    k.loop(spawnInterval, generateOrder);
-
-    // ==================== MOVEMENT ====================
-    k.onUpdate(() => {
-      const speed = player.speed;
-
-      // Desktop controls
-      if (k.isKeyDown("left") || k.isKeyDown("a")) {
-        player.pos.x -= speed * k.dt();
-      }
-      if (k.isKeyDown("right") || k.isKeyDown("d")) {
-        player.pos.x += speed * k.dt();
-      }
-      if (k.isKeyDown("up") || k.isKeyDown("w")) {
-        player.pos.y -= speed * k.dt();
-      }
-      if (k.isKeyDown("down") || k.isKeyDown("s")) {
-        player.pos.y += speed * k.dt();
-      }
-
-      // Mobile controls
-      if (isMobile && (mobileInput.x !== 0 || mobileInput.y !== 0)) {
-        player.pos.x += mobileInput.x * speed * k.dt();
-        player.pos.y += mobileInput.y * speed * k.dt();
-      }
-
-      player.pos.x = Math.max(40, Math.min(k.width() - 40, player.pos.x));
-      player.pos.y = Math.max(
-        40,
-        Math.min(k.height() - (isMobile ? 100 : 60), player.pos.y),
-      );
-
-      const head = k.get("playerHead")[0];
-      const name = k.get("playerName")[0];
-      const held = k.get("heldItem")[0];
-      const indicator = k.get("indicator")[0];
-
-      if (head) head.pos = player.pos.add(0, -5);
-      if (name) name.pos = player.pos.add(0, playerSize / 2 + 10);
-      if (held) held.pos = player.pos.add(0, -30);
-
-      nearestStation = findNearestStation();
-
-      if (nearestStation && indicator) {
-        indicator.pos = player.pos.add(0, 40);
-        indicator.opacity = Math.sin(k.time() * 5) * 0.5 + 0.5;
-      } else if (indicator) {
-        indicator.opacity = 0;
-      }
-
-      // Verificar orientação contínua em mobile
-      if (isMobile && isPortrait) {
-        showOrientationWarning();
-      } else {
-        hideOrientationWarning();
-      }
-    });
-
-    // ==================== FUNCTIONS ====================
-    function updateHeldItemDisplay() {
-      const held = k.get("heldItem")[0];
-      if (!held) return;
-
-      if (!player.heldItem) {
-        held.text = "";
-        return;
-      }
-
-      const ingredients = player.heldItem.ingredients;
-      let emoji = "🫓";
-
-      if (player.heldItem.cooked) {
-        emoji = "🍕✨";
-      } else if (player.heldItem.needsOven) {
-        emoji = "🍕❄️";
-      } else if (ingredients.length === 1 && ingredients.includes("dough")) {
-        emoji = "🫓";
-      } else if (
-        ingredients.includes("dough") &&
-        ingredients.includes("sauce")
-      ) {
-        emoji = "🍕🍅";
-      } else {
-        emoji = "🫓";
-      }
-
-      held.text = emoji;
-    }
-
-    function findNearestStation() {
-      let nearest = null;
-      let minDist = isMobile ? 70 : 120;
-
-      stationObjects.forEach((s) => {
-        const dist = player.pos.dist(s.base.pos);
-        if (dist < minDist) {
-          minDist = dist;
-          nearest = s.base;
-        }
-      });
-
-      return nearest;
-    }
-
-    function interactWithStation(station) {
-      const type = station.stationType;
-      const feedbackSize = isMobile ? 12 : 14;
-
-      // TRASH
-      if (type === "trash") {
-        if (player.heldItem) {
-          player.heldItem = null;
-          updateHeldItemDisplay();
-          playSfx("error");
-          k.add([
-            k.text("🗑️", { size: feedbackSize }),
-            k.pos(station.pos.add(0, -40)),
-            k.anchor("center"),
-            k.color(200, 200, 200),
-            k.opacity(1),
-            k.lifespan(0.8),
-            k.z(200),
-          ]);
-        }
-        return;
-      }
-
-      // DELIVERY
-      if (type === "delivery") {
-        if (!player.heldItem) {
-          k.add([
-            k.text("SEM PIZZA!", { size: feedbackSize }),
-            k.pos(station.pos.add(0, -40)),
-            k.anchor("center"),
-            k.color(255, 0, 0),
-            k.opacity(1),
-            k.lifespan(0.8),
-            k.z(200),
-          ]);
-          return;
-        }
-
-        if (!player.heldItem.cooked) {
-          k.add([
-            k.text("COZINHAR!", { size: feedbackSize }),
-            k.pos(station.pos.add(0, -40)),
-            k.anchor("center"),
-            k.color(255, 165, 0),
-            k.opacity(1),
-            k.lifespan(0.8),
-            k.z(200),
-          ]);
-          return;
-        }
-
-        const heldIng = [...player.heldItem.ingredients].sort().join(",");
-
-        for (let i = 0; i < orders.length; i++) {
-          const orderIng = [...orders[i].recipe.ingredients].sort().join(",");
-
-          if (heldIng === orderIng) {
-            const pts = orders[i].recipe.points + combo * 10;
-            score += pts;
-            combo++;
-            completedRecipes++;
-            playSfx("interaction");
-
-            orders.splice(i, 1);
-            player.heldItem = null;
-            updateHeldItemDisplay();
-
-            scoreText.text = `PONTOS: ${score}`;
-            comboText.text = `COMBO: ${combo}x`;
-            recipesText.text = `RECEITAS: ${completedRecipes}/${RECIPES_NEEDED}`;
-
-            k.add([
-              k.text(`+${pts}`, { size: 20 }),
-              k.pos(player.pos),
-              k.anchor("center"),
-              k.color(76, 175, 80),
-              k.opacity(1),
-              k.lifespan(1.5),
-              k.move(k.UP, 50),
-              k.z(200),
-            ]);
-
-            if (combo > 1) {
-              k.add([
-                k.text(`${combo}x COMBO!`, { size: isMobile ? 20 : 28 }),
-                k.pos(k.center()),
-                k.anchor("center"),
-                k.color(76, 175, 80),
-                k.opacity(1),
-                k.lifespan(1),
-                k.z(200),
-              ]);
-            }
-            return;
-          }
-        }
-
-        combo = 0;
-        comboText.text = "COMBO: 0x";
-        playSfx("error");
-        k.shake(10);
-        k.add([
-          k.text("ERRADO!", { size: feedbackSize + 4 }),
-          k.pos(station.pos.add(0, -40)),
-          k.anchor("center"),
-          k.color(255, 0, 0),
-          k.opacity(1),
-          k.lifespan(1),
-          k.z(200),
-        ]);
-        return;
-      }
-
-      // OVEN
-      if (type === "oven") {
-        if (
-          player.heldItem &&
-          player.heldItem.needsOven &&
-          !player.heldItem.cooked &&
-          !station.working
-        ) {
-          station.item = player.heldItem;
-          station.working = true;
-          station.timer = 5;
-          player.heldItem = null;
-          updateHeldItemDisplay();
-          playSfx("interaction");
-
-          k.add([
-            k.text("🔥", { size: feedbackSize }),
-            k.pos(station.pos.add(0, -40)),
-            k.anchor("center"),
-            k.color(255, 165, 0),
-            k.opacity(1),
-            k.lifespan(1),
-            k.z(200),
-          ]);
-          return;
-        }
-
-        if (station.working && station.timer <= 0 && !player.heldItem) {
-          player.heldItem = station.item;
-          player.heldItem.cooked = true;
-          player.heldItem.needsOven = false;
-          station.item = null;
-          station.working = false;
-
-          // Reset oven icon
-          const stationIcon = stationObjects.find((s) => s.base === station);
-          if (stationIcon) {
-            stationIcon.icon.text = "🔥";
-          }
-
-          updateHeldItemDisplay();
-
-          k.add([
-            k.text("✅", { size: feedbackSize }),
-            k.pos(station.pos.add(0, -40)),
-            k.anchor("center"),
-            k.color(76, 175, 80),
-            k.opacity(1),
-            k.lifespan(1),
-            k.z(200),
-          ]);
-          return;
-        }
-
-        if (station.working && station.timer > 0) {
-          k.add([
-            k.text("⏱️", { size: feedbackSize }),
-            k.pos(station.pos.add(0, -40)),
-            k.anchor("center"),
-            k.color(255, 255, 0),
-            k.opacity(1),
-            k.lifespan(0.8),
-            k.z(200),
-          ]);
-        }
-        return;
-      }
-
-      // INGREDIENTS
-      if (
-        ["dough", "sauce", "cheese", "pepperoni", "mushroom"].includes(type)
-      ) {
-        if (!player.heldItem) {
-          if (type !== "dough") {
-            k.add([
-              k.text("MASSA 1°!", { size: feedbackSize }),
-              k.pos(station.pos.add(0, -40)),
-              k.anchor("center"),
-              k.color(255, 165, 0),
-              k.opacity(1),
-              k.lifespan(1.2),
-              k.z(200),
-            ]);
-            return;
-          }
-
-          playSfx("interaction");
-          player.heldItem = {
-            ingredients: [type],
-            needsOven: false,
-            cooked: false,
-          };
-          updateHeldItemDisplay();
-
-          k.add([
-            k.text("✓", { size: feedbackSize }),
-            k.pos(station.pos.add(0, -40)),
-            k.anchor("center"),
-            k.color(76, 175, 80),
-            k.opacity(1),
-            k.lifespan(0.8),
-            k.z(200),
-          ]);
-          return;
-        }
-
-        if (player.heldItem.cooked) {
-          k.add([
-            k.text("PRONTA!", { size: feedbackSize }),
-            k.pos(station.pos.add(0, -40)),
-            k.anchor("center"),
-            k.color(255, 0, 0),
-            k.opacity(1),
-            k.lifespan(0.8),
-            k.z(200),
-          ]);
-          return;
-        }
-
-        if (type === "dough") {
-          k.add([
-            k.text("JÁ TEM!", { size: feedbackSize }),
-            k.pos(station.pos.add(0, -40)),
-            k.anchor("center"),
-            k.color(255, 0, 0),
-            k.opacity(1),
-            k.lifespan(0.8),
-            k.z(200),
-          ]);
-          return;
-        }
-
-        if (!player.heldItem.ingredients.includes("dough")) {
-          k.add([
-            k.text("CADÊ MASSA?", { size: feedbackSize }),
-            k.pos(station.pos.add(0, -40)),
-            k.anchor("center"),
-            k.color(255, 165, 0),
-            k.opacity(1),
-            k.lifespan(1),
-            k.z(200),
-          ]);
-          return;
-        }
-
-        player.heldItem.ingredients.push(type);
-        playSfx("interaction");
-
-        if (player.heldItem.ingredients.length >= 2) {
-          player.heldItem.needsOven = true;
-        }
-
-        updateHeldItemDisplay();
-
-        k.add([
-          k.text("✓", { size: feedbackSize }),
-          k.pos(station.pos.add(0, -40)),
-          k.anchor("center"),
-          k.color(76, 175, 80),
-          k.opacity(1),
-          k.lifespan(0.8),
-          k.z(200),
-        ]);
-        return;
-      }
-    }
-
-    // ==================== INPUT ====================
-    k.onKeyPress("space", () => {
-      const station = findNearestStation();
-      if (station) {
-        interactWithStation(station);
-
-        k.add([
-          k.circle(12),
-          k.pos(player.pos),
-          k.anchor("center"),
-          k.color(255, 255, 0),
-          k.opacity(0.8),
-          k.lifespan(0.2),
-          k.z(200),
-        ]);
-      }
-    });
-
-    // Mobile action button
-    if (isMobile) {
-      k.onUpdate(() => {
-        if (mobileInput.action) {
-          const station = findNearestStation();
-          if (station) {
-            interactWithStation(station);
-
-            k.add([
-              k.circle(12),
-              k.pos(player.pos),
-              k.anchor("center"),
-              k.color(255, 255, 0),
-              k.opacity(0.8),
-              k.lifespan(0.2),
-              k.z(200),
-            ]);
-          }
-          mobileInput.action = false;
-        }
-      });
-    }
-
-    k.onKeyPress("escape", () => k.go("menu"));
-
-    // ==================== UPDATES ====================
-    k.onUpdate(() => {
-      // Update ovens
-      stationObjects.forEach((s) => {
-        if (s.base.working) {
-          s.base.timer -= k.dt();
-          s.icon.text = s.base.timer > 0 ? "🔥" : "✅";
-        }
-      });
-
-      // Update orders
-      for (let i = orders.length - 1; i >= 0; i--) {
-        orders[i].timeLeft -= k.dt();
-
-        if (orders[i].timeLeft <= 0) {
-          playSfx("error");
-          orders.splice(i, 1);
-          combo = 0;
-          comboText.text = "COMBO: 0x";
-          k.shake(15);
-
-          k.add([
-            k.text("PERDIDO!", { size: isMobile ? 18 : 24 }),
-            k.pos(k.center()),
-            k.anchor("center"),
-            k.color(255, 0, 0),
-            k.opacity(1),
-            k.lifespan(2),
-            k.move(k.UP, 20),
-            k.z(200),
-          ]);
-        }
-      }
-
-      // Update timer
-      gameTime -= k.dt();
-      const min = Math.floor(gameTime / 60);
-      const sec = Math.floor(gameTime % 60);
-      timerText.text = `TEMPO: ${min}:${sec.toString().padStart(2, "0")}`;
-
-      if (gameTime <= 30) {
-        timerText.color = k.rgb(255, 0, 0);
-      }
-
-      if (gameTime <= 0) {
-        if (completedRecipes >= RECIPES_NEEDED) {
-          k.go("levelcomplete", {
-            score,
-            level: currentLevel,
-            time: levelData.maxTime - gameTime,
-          });
-        } else {
-          k.go("gameover", {
-            score,
-            level: currentLevel,
-            reason: "TEMPO_ESGOTADO",
-          });
-        }
-      }
-    });
-
-    // ==================== DRAW ORDERS ====================
-    k.onDraw(() => {
-      const orderX = 810;
-      const orderWidth = 170;
-      const orderHeight = 90;
-      const orderSpacing = 100;
-
-      orders.forEach((order, i) => {
-        const y = 85 + i * orderSpacing;
-
-        k.drawRect({
-          width: orderWidth,
-          height: orderHeight,
-          pos: k.vec2(orderX, y),
-          color: k.rgb(0, 0, 0),
-          opacity: 0.8,
-          outline: { width: 2, color: k.rgb(255, 165, 0) },
-        });
-
-        k.drawText({
-          text: order.recipe.name,
-          pos: k.vec2(orderX + orderWidth / 2, y + 14),
-          size: 17,
-          anchor: "center",
-        });
-
-        const ingredientsMap = {
-          dough: "🫓",
-          sauce: "🍅",
-          cheese: "🧀",
-          pepperoni: "🥓",
-          mushroom: "🍄",
-        };
-        const icons = order.recipe.ingredients
-          .map((ing) => ingredientsMap[ing] || "?")
-          .join("");
-
-        k.drawText({
-          text: icons,
-          pos: k.vec2(orderX + orderWidth / 2, y + 34),
-          size: 20,
-          anchor: "center",
-        });
-
-        const progress = order.timeLeft / order.maxTime;
-        const barColor =
-          progress > 0.5
-            ? k.rgb(76, 175, 80)
-            : progress > 0.25
-              ? k.rgb(255, 193, 7)
-              : k.rgb(244, 67, 54);
-
-        const barWidth = 140;
-        k.drawRect({
-          width: barWidth * progress,
-          height: 6,
-          pos: k.vec2(orderX + 15, y + 56),
-          color: barColor,
-        });
-
-        k.drawText({
-          text: `${Math.ceil(order.timeLeft)}s`,
-          pos: k.vec2(orderX + orderWidth / 2, y + 72),
-          size: 14,
-          anchor: "center",
-        });
-      });
-    });
-  },
-);
-
-// ==================== LEVEL COMPLETE SCENE ====================
-k.scene("levelcomplete", (data) => {
-  let transitioning = false;
-  playSfx("levelComplete", { allowOverlap: false });
-
-  k.add([
-    k.text("🎉 NÍVEL CONCLUÍDO! 🎉", { size: isMobile ? 30 : 36 }),
-    k.pos(k.center().x, isMobile ? 80 : 120),
-    k.anchor("center"),
-    k.color(76, 175, 80),
-  ]);
-
-  k.add([
-    k.text(`NÍVEL ${data.level}`, { size: isMobile ? 22 : 24 }),
-    k.pos(k.center().x, isMobile ? 130 : 180),
-    k.anchor("center"),
-    k.color(200, 100, 255),
-  ]);
-
-  k.add([
-    k.text(`Pontuação: ${data.score}`, { size: isMobile ? 24 : 28 }),
-    k.pos(k.center().x, isMobile ? 180 : 240),
-    k.anchor("center"),
-    k.color(255, 165, 0),
-  ]);
-
-  k.add([
-    k.text(`Tempo: ${Math.floor(data.time)}s`, { size: isMobile ? 18 : 20 }),
-    k.pos(k.center().x, isMobile ? 220 : 290),
-    k.anchor("center"),
-    k.color(100, 200, 255),
-  ]);
-
-  const nextLevel = data.level + 1;
-
-  if (nextLevel <= 3) {
-    const nextLevelData = {
-      level: nextLevel,
-      difficulty: nextLevel === 2 ? "normal" : "hard",
-      maxTime: nextLevel === 2 ? 150 : 120,
-    };
-
-    const goNextLevel = () => {
-      if (transitioning) return;
-      transitioning = true;
-      k.go("game", nextLevelData);
-    };
-
-    k.add([
-      k.text(`PRÓXIMO: NÍVEL ${nextLevel}`, { size: isMobile ? 20 : 22 }),
-      k.pos(k.center().x, isMobile ? 270 : 350),
-      k.anchor("center"),
-      k.color(255, 255, 100),
-    ]);
-
-    k.wait(3, () => {
-      goNextLevel();
-    });
-
-    const countdownText = k.add([
-      k.text("3", { size: isMobile ? 36 : 48 }),
-      k.pos(k.center().x, isMobile ? 320 : 420),
-      k.anchor("center"),
-      k.color(255, 100, 100),
-    ]);
-
-    let countdown = 3;
-    k.loop(1, () => {
-      countdown--;
-      if (countdown > 0) {
-        countdownText.text = countdown.toString();
-      } else {
-        countdownText.text = "";
-      }
-    });
-
-    k.add([
-      k.text(isMobile ? "Toque para pular" : "ESPAÇO - Pular", {
-        size: isMobile ? 16 : 16,
-      }),
-      k.pos(k.center().x, k.height() - (isMobile ? 80 : 100)),
-      k.anchor("center"),
-      k.color(200, 200, 200),
-    ]);
-
-    k.onKeyPress("space", goNextLevel);
-    k.onClick(goNextLevel);
-    if (isMobile) {
-      k.onTouchStart(goNextLevel);
-    }
-  } else {
-    // Completed all levels!
-    k.add([
-      k.text("🏆 PARABÉNS! 🏆", { size: isMobile ? 22 : 24 }),
-      k.pos(k.center().x, isMobile ? 120 : 150),
-      k.anchor("center"),
-      k.color(255, 215, 0),
-    ]);
-
-    k.add([
-      k.text("VOCÊ COMPLETOU TODOS OS NÍVEIS!", { size: isMobile ? 14 : 16 }),
-      k.pos(k.center().x, isMobile ? 180 : 240),
-      k.anchor("center"),
-    ]);
-
-    k.add([
-      k.text(`Pontuação Total: ${data.score}`, { size: isMobile ? 22 : 24 }),
-      k.pos(k.center().x, isMobile ? 230 : 300),
-      k.anchor("center"),
-      k.color(255, 165, 0),
-    ]);
-
-    const goMenu = () => {
-      if (transitioning) return;
-      transitioning = true;
-      k.go("menu");
-    };
-
-    k.wait(5, goMenu);
-
-    const countdownText = k.add([
-      k.text("Menu em 5...", { size: isMobile ? 18 : 20 }),
-      k.pos(k.center().x, isMobile ? 290 : 370),
-      k.anchor("center"),
-      k.color(200, 200, 200),
-    ]);
-
-    let countdown = 5;
-    k.loop(1, () => {
-      countdown--;
-      if (countdown > 0) {
-        countdownText.text = `Menu em ${countdown}...`;
-      } else {
-        countdownText.text = "";
-      }
-    });
-
-    k.add([
-      k.text(isMobile ? "Toque para menu" : "ESPAÇO - Menu principal", {
-        size: isMobile ? 16 : 16,
-      }),
-      k.pos(k.center().x, k.height() - (isMobile ? 80 : 100)),
-      k.anchor("center"),
-    ]);
-
-    k.onKeyPress("space", goMenu);
-    k.onClick(goMenu);
-    if (isMobile) {
-      k.onTouchStart(goMenu);
     }
   }
 
-  k.onKeyPress("escape", () => {
+  function stationIcon(station) {
+    if (station.oven) {
+      const status = ovenStatus(station.oven);
+      if (status === "done") return "🍕";
+      if (status === "burnt") return "💨";
+      return "🔥";
+    }
+    return (
+      INGREDIENT_ICONS[station.stationType] ??
+      STATION_STYLES[station.stationType].icon
+    );
+  }
+
+  const stationObjects = STATIONS.map((s) =>
+    k.add([
+      k.pos(s.x, s.y),
+      k.z(5),
+      {
+        stationType: s.type,
+        name: s.name,
+        oven: s.type === "oven" ? { item: null, elapsed: 0 } : null,
+        highlighted: false,
+        draw() {
+          const half = STATION_SIZE / 2;
+          const body =
+            STATION_STYLES[this.stationType]?.body ?? k.rgb(122, 80, 48);
+
+          k.drawRect({
+            pos: k.vec2(0, 6),
+            width: STATION_SIZE,
+            height: STATION_SIZE,
+            radius: 10,
+            anchor: "center",
+            color: BLACK,
+            opacity: 0.35,
+          });
+          k.drawRect({
+            width: STATION_SIZE,
+            height: STATION_SIZE,
+            radius: 10,
+            anchor: "center",
+            color: body,
+            outline: this.highlighted
+              ? { width: 4, color: YELLOW }
+              : { width: 2, color: INK },
+          });
+
+          // Brilho do forno ligado
+          if (this.oven && ovenStatus(this.oven) === "cooking") {
+            k.drawCircle({
+              pos: k.vec2(0, -8),
+              radius: 26,
+              color: ORANGE,
+              opacity: 0.25 + Math.sin(k.time() * 8) * 0.1,
+            });
+          }
+
+          const idleOven = this.oven && !this.oven.item;
+          k.drawText({
+            text: stationIcon(this),
+            pos: k.vec2(0, -8),
+            size: 36,
+            font: "pixel-big",
+            anchor: "center",
+            opacity: idleOven ? 0.45 : 1,
+          });
+
+          k.drawRect({
+            pos: k.vec2(0, half - 12),
+            width: STATION_SIZE - 10,
+            height: 18,
+            radius: 5,
+            anchor: "center",
+            color: BLACK,
+            opacity: 0.5,
+          });
+          k.drawText({
+            text: this.name,
+            pos: k.vec2(0, half - 12),
+            size: 15,
+            anchor: "center",
+          });
+
+          if (this.oven) drawOvenBar(this.oven);
+        },
+      },
+    ]),
+  );
+
+  // ==================== PLAYER ====================
+  const actionHint = isMobile ? "⚡" : "ESPAÇO";
+
+  function heldItemLabel(item) {
+    if (item.burnt) return "🍕💨";
+    if (item.cooked) return "🍕✨";
+    return item.ingredients.map((ing) => INGREDIENT_ICONS[ing]).join("");
+  }
+
+  const player = k.add([
+    k.pos(345, 400),
+    k.z(10),
+    {
+      heldItem: null,
+      facing: 1,
+      moving: false,
+      draw() {
+        const bob = this.moving ? -Math.abs(Math.sin(k.time() * 14)) * 2 : 0;
+        drawFreddy({ facing: this.facing, bob });
+
+        if (this.heldItem) {
+          const label = k.formatText({
+            text: heldItemLabel(this.heldItem),
+            size: 16,
+            pos: k.vec2(0, -56),
+            anchor: "center",
+          });
+          k.drawRect({
+            pos: k.vec2(0, -56),
+            width: label.width + 14,
+            height: 26,
+            radius: 8,
+            anchor: "center",
+            color: BLACK,
+            opacity: 0.65,
+          });
+          k.drawFormattedText(label);
+        }
+
+        if (nearestStation && !paused) {
+          k.drawText({
+            text: actionHint,
+            pos: k.vec2(0, 38),
+            size: 13,
+            anchor: "center",
+            color: YELLOW,
+            opacity: Math.sin(k.time() * 5) * 0.4 + 0.6,
+          });
+        }
+      },
+    },
+  ]);
+
+  // ==================== HUD ====================
+  k.add([
+    k.z(100),
+    {
+      draw() {
+        k.drawRect({
+          width: GAME_WIDTH,
+          height: HUD_HEIGHT,
+          color: k.rgb(14, 12, 22),
+        });
+        k.drawRect({
+          pos: k.vec2(0, HUD_HEIGHT - 3),
+          width: GAME_WIDTH,
+          height: 3,
+          color: ORANGE,
+        });
+      },
+    },
+  ]);
+
+  const addHudText = (text, x, color, anchor = "left", size = 18) =>
+    k.add([
+      k.text(text, { size }),
+      k.pos(x, 21),
+      k.anchor(anchor),
+      k.color(color),
+      k.scale(1),
+      k.z(101),
+    ]);
+
+  const scoreText = addHudText("PONTOS: 0", 16, ORANGE);
+  const comboText = addHudText("COMBO: 0x", 180, GREEN);
+  const recipesText = addHudText("RECEITAS: 0", 300, BLUE);
+  const starsText = addHudText(starRow(0), 430, WHITE);
+  const timerText = addHudText("", 610, WHITE, "center", 22);
+  addHudText(`NÍVEL ${level}/${LEVELS.length}`, 880, PURPLE, "right");
+
+  const pauseButton = addButton(
+    "⏸️",
+    k.vec2(916, 22),
+    () => setPaused(!paused),
+    {
+      width: 40,
+      height: 32,
+      size: 18,
+      color: k.rgb(60, 54, 80),
+    },
+  );
+  pauseButton.z = 150;
+
+  function updateHud() {
+    scoreText.text = `PONTOS: ${score}`;
+    comboText.text = `COMBO: ${combo}x`;
+    recipesText.text = `RECEITAS: ${completedRecipes}`;
+    starsText.text = starRow(starsForRecipes(completedRecipes));
+
+    const timeLeft = Math.max(0, Math.ceil(gameTime));
+    const min = Math.floor(timeLeft / 60);
+    const sec = timeLeft % 60;
+    timerText.text = `⏱️ ${min}:${sec.toString().padStart(2, "0")}`;
+
+    if (gameTime <= 30) {
+      timerText.color = RED;
+      timerText.scale = k.vec2(1 + Math.abs(Math.sin(k.time() * 4)) * 0.12);
+    }
+  }
+
+  updateHud();
+
+  // ==================== ORDERS ====================
+  function generateOrder() {
+    if (orders.length >= levelConfig.maxOrders) return;
+
+    const recipe = k.choose(RECIPES);
+    const time = Math.round(recipe.time * levelConfig.orderTimeFactor);
+    orders.push({ recipe, timeLeft: time, maxTime: time });
+  }
+
+  generateOrder();
+
+  k.add([
+    k.z(50),
+    {
+      draw() {
+        const panelX = KITCHEN_RIGHT + 10;
+        const panelWidth = GAME_WIDTH - panelX - 10;
+        const centerX = panelX + panelWidth / 2;
+
+        k.drawRect({
+          pos: k.vec2(panelX, HUD_HEIGHT + 6),
+          width: panelWidth,
+          height: GAME_HEIGHT - HUD_HEIGHT - 12,
+          radius: 10,
+          color: k.rgb(16, 14, 26),
+          outline: { width: 2, color: ORANGE },
+        });
+        k.drawText({
+          text: "PEDIDOS",
+          pos: k.vec2(centerX, HUD_HEIGHT + 24),
+          size: 18,
+          anchor: "center",
+          color: ORANGE,
+        });
+
+        if (orders.length === 0) {
+          k.drawText({
+            text: "Aguardando...",
+            pos: k.vec2(centerX, 120),
+            size: 15,
+            anchor: "center",
+            color: GRAY,
+          });
+        }
+
+        orders.forEach((order, i) => {
+          const x = panelX + 10;
+          const y = 84 + i * 100;
+          const width = panelWidth - 20;
+          const progress = order.timeLeft / order.maxTime;
+          const urgent = progress <= 0.25;
+          const barColor =
+            progress > 0.5 ? GREEN : progress > 0.25 ? YELLOW : RED;
+
+          k.drawRect({
+            pos: k.vec2(x, y),
+            width,
+            height: 92,
+            radius: 8,
+            color: k.rgb(36, 30, 50),
+            outline: {
+              width: 2,
+              color:
+                urgent && Math.sin(k.time() * 12) > 0
+                  ? RED
+                  : k.rgb(80, 72, 100),
+            },
+          });
+          k.drawText({
+            text: order.recipe.name,
+            pos: k.vec2(centerX, y + 15),
+            size: 17,
+            anchor: "center",
+          });
+          k.drawText({
+            text: order.recipe.ingredients
+              .map((ing) => INGREDIENT_ICONS[ing])
+              .join(""),
+            pos: k.vec2(centerX, y + 40),
+            size: 20,
+            anchor: "center",
+          });
+          k.drawRect({
+            pos: k.vec2(x + 12, y + 60),
+            width: width - 24,
+            height: 8,
+            radius: 4,
+            color: BLACK,
+            opacity: 0.6,
+          });
+          k.drawRect({
+            pos: k.vec2(x + 12, y + 60),
+            width: (width - 24) * progress,
+            height: 8,
+            radius: 4,
+            color: barColor,
+          });
+          k.drawText({
+            text: `${Math.ceil(order.timeLeft)}s`,
+            pos: k.vec2(centerX, y + 79),
+            size: 14,
+            anchor: "center",
+            color: urgent ? RED : WHITE,
+          });
+        });
+      },
+    },
+  ]);
+
+  // ==================== INTERACTION ====================
+  function findNearestStation() {
+    let nearest = null;
+    let minDist = INTERACT_RANGE;
+
+    stationObjects.forEach((station) => {
+      const dist = player.pos.dist(station.pos);
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = station;
+      }
+    });
+
+    return nearest;
+  }
+
+  // Fica parado: subindo, invadiria o HUD (linha de cima) ou a barra do forno
+  function stationFeedback(station, text, color, size = 15) {
+    const offset = station.oven ? 32 : 14;
+    showFeedback(text, station.pos.add(0, -STATION_SIZE / 2 - offset), {
+      color,
+      size,
+      rise: false,
+    });
+  }
+
+  function deliver(station) {
+    const item = player.heldItem;
+
+    if (!item) {
+      stationFeedback(station, "SEM PIZZA!", RED);
+      return;
+    }
+    if (item.burnt) {
+      stationFeedback(station, "QUEIMADA! 🗑️", RED);
+      return;
+    }
+    if (!item.cooked) {
+      stationFeedback(station, "ASSE PRIMEIRO!", ORANGE);
+      return;
+    }
+
+    const heldIng = [...item.ingredients].sort().join(",");
+    const orderIndex = orders.findIndex(
+      (order) => [...order.recipe.ingredients].sort().join(",") === heldIng,
+    );
+
+    if (orderIndex === -1) {
+      combo = 0;
+      updateHud();
+      playSfx("error");
+      k.shake(10);
+      stationFeedback(station, "ERRADO!", RED, 20);
+      return;
+    }
+
+    const pts = orders[orderIndex].recipe.points + combo * 10;
+    const starsBefore = starsForRecipes(completedRecipes);
+    score += pts;
+    combo++;
+    completedRecipes++;
+    orders.splice(orderIndex, 1);
+    player.heldItem = null;
+    playSfx("interaction");
+    updateHud();
+
+    showFeedback(`+${pts}`, player.pos.add(0, -40), {
+      color: GREEN,
+      size: 24,
+      duration: 1.3,
+    });
+    if (combo > 1) {
+      showFeedback(`${combo}x COMBO!`, k.vec2(KITCHEN_RIGHT / 2, 250), {
+        color: GREEN,
+        size: 32,
+        duration: 1,
+      });
+    }
+
+    const starsNow = starsForRecipes(completedRecipes);
+    if (starsNow > starsBefore) {
+      playSfx("levelComplete");
+      showFeedback(
+        `${starRow(starsNow)} ESTRELA!`,
+        k.vec2(KITCHEN_RIGHT / 2, 200),
+        {
+          color: YELLOW,
+          size: 28,
+          duration: 1.4,
+        },
+      );
+    }
+  }
+
+  function useOven(station) {
+    const oven = station.oven;
+    const status = ovenStatus(oven);
+    const item = player.heldItem;
+
+    if (status === "empty") {
+      if (!item) return;
+      if (item.cooked || item.burnt) {
+        stationFeedback(station, "JÁ ASSOU!", ORANGE);
+        return;
+      }
+      if (item.ingredients.length < 2) {
+        stationFeedback(station, "FALTA RECHEIO!", ORANGE);
+        return;
+      }
+
+      oven.item = item;
+      oven.elapsed = 0;
+      player.heldItem = null;
+      playSfx("interaction");
+      stationFeedback(station, "🔥", ORANGE, 20);
+      return;
+    }
+
+    if (status === "cooking") {
+      stationFeedback(station, "⏱️ ASSANDO...", YELLOW);
+      return;
+    }
+
+    if (item) {
+      stationFeedback(station, "MÃOS CHEIAS!", ORANGE);
+      return;
+    }
+
+    player.heldItem = oven.item;
+    player.heldItem.cooked = status === "done";
+    oven.item = null;
+    playSfx("interaction");
+    stationFeedback(
+      station,
+      status === "done" ? "✅" : "💨",
+      status === "done" ? GREEN : GRAY,
+      20,
+    );
+  }
+
+  function addIngredient(station) {
+    const type = station.stationType;
+    const item = player.heldItem;
+
+    if (!item) {
+      if (type !== "dough") {
+        stationFeedback(station, "MASSA PRIMEIRO!", ORANGE);
+        return;
+      }
+      player.heldItem = { ingredients: ["dough"], cooked: false, burnt: false };
+      playSfx("interaction");
+      stationFeedback(station, "✓", GREEN, 20);
+      return;
+    }
+
+    if (item.cooked || item.burnt) {
+      stationFeedback(station, "JÁ ASSOU!", RED);
+      return;
+    }
+    if (type === "dough") {
+      stationFeedback(station, "JÁ TEM MASSA!", RED);
+      return;
+    }
+
+    item.ingredients.push(type);
+    playSfx("interaction");
+    stationFeedback(station, "✓", GREEN, 20);
+  }
+
+  function interactWithStation(station) {
+    switch (station.stationType) {
+      case "trash":
+        if (player.heldItem) {
+          player.heldItem = null;
+          playSfx("error");
+          stationFeedback(station, "🗑️", GRAY, 20);
+        }
+        break;
+      case "delivery":
+        deliver(station);
+        break;
+      case "oven":
+        useOven(station);
+        break;
+      default:
+        addIngredient(station);
+    }
+  }
+
+  function tryInteract() {
+    if (paused || levelOver || !nearestStation) return;
+    interactWithStation(nearestStation);
+
+    k.add([
+      k.circle(12),
+      k.pos(player.pos),
+      k.anchor("center"),
+      k.color(YELLOW),
+      k.opacity(0.8),
+      k.lifespan(0.2, { fade: 0.2 }),
+      k.z(200),
+    ]);
+  }
+
+  // ==================== LEVEL END ====================
+  // Precisa de pelo menos 1 estrela para passar de nível
+  function endLevel() {
+    levelOver = true;
+    const levelStars = starsForRecipes(completedRecipes);
+
+    if (levelStars === 0) {
+      k.go("gameover", {
+        level,
+        score,
+        completedRecipes,
+        previousScore: totalScore,
+        stars,
+      });
+      return;
+    }
+
+    showFeedback("⏰ FIM DE TURNO! ⏰", k.vec2(KITCHEN_RIGHT / 2, 250), {
+      color: YELLOW,
+      size: 32,
+      duration: 1.2,
+    });
+
+    k.wait(1, () =>
+      k.go("levelcomplete", {
+        level,
+        score,
+        completedRecipes,
+        totalScore: totalScore + score,
+        stars: [...stars, levelStars],
+      }),
+    );
+  }
+
+  // ==================== PAUSE ====================
+  function setPaused(value) {
+    if (value === paused || levelOver) return;
+    paused = value;
+
+    if (!paused) {
+      pauseLayer.destroy();
+      pauseLayer = null;
+      return;
+    }
+
+    pauseLayer = k.add([k.z(400)]);
+    pauseLayer.add([
+      k.rect(GAME_WIDTH, GAME_HEIGHT),
+      k.color(BLACK),
+      k.opacity(0.6),
+    ]);
+    addPanel(380, 280, k.vec2(GAME_WIDTH / 2, 250), pauseLayer);
+    addLabel("PAUSADO", k.vec2(GAME_WIDTH / 2, 155), {
+      size: 40,
+      color: ORANGE,
+      parent: pauseLayer,
+    });
+    addButton(
+      "CONTINUAR",
+      k.vec2(GAME_WIDTH / 2, 235),
+      () => setPaused(false),
+      {
+        parent: pauseLayer,
+      },
+    );
+    addButton("MENU", k.vec2(GAME_WIDTH / 2, 305), () => k.go("menu"), {
+      color: k.rgb(90, 84, 120),
+      parent: pauseLayer,
+    });
+    if (!isMobile) {
+      addLabel("ESC - Continuar  ·  Q - Menu", k.vec2(GAME_WIDTH / 2, 362), {
+        size: 15,
+        color: GRAY,
+        parent: pauseLayer,
+      });
+    }
+  }
+
+  activeGame = { setPaused };
+  if (isMobile && isPortrait) setPaused(true);
+
+  // ==================== INPUT ====================
+  k.onKeyPress("space", tryInteract);
+  k.onKeyPress(["escape", "p"], () => setPaused(!paused));
+  k.onKeyPress("q", () => {
+    if (paused) k.go("menu");
+  });
+
+  // ==================== UPDATE ====================
+  k.onUpdate(() => {
+    if (paused || levelOver) {
+      player.moving = false;
+      mobileInput.action = false;
+      return;
+    }
+
+    const dt = k.dt();
+
+    // Movimento (teclado + joystick), sem andar mais rápido na diagonal
+    let dir = k.vec2(0, 0);
+    if (k.isKeyDown("left") || k.isKeyDown("a")) dir.x -= 1;
+    if (k.isKeyDown("right") || k.isKeyDown("d")) dir.x += 1;
+    if (k.isKeyDown("up") || k.isKeyDown("w")) dir.y -= 1;
+    if (k.isKeyDown("down") || k.isKeyDown("s")) dir.y += 1;
+    dir = dir.add(mobileInput.x, mobileInput.y);
+    if (dir.len() > 1) dir = dir.unit();
+
+    player.moving = dir.len() > 0.1;
+    if (Math.abs(dir.x) > 0.1) player.facing = Math.sign(dir.x);
+    player.pos = player.pos.add(dir.scale(PLAYER_SPEED * dt));
+    player.pos.x = k.clamp(player.pos.x, 30, KITCHEN_RIGHT - 20);
+    player.pos.y = k.clamp(
+      player.pos.y,
+      HUD_HEIGHT + 40,
+      GAME_HEIGHT - (isMobile ? 100 : 30),
+    );
+
+    nearestStation = findNearestStation();
+    stationObjects.forEach((station) => {
+      station.highlighted = station === nearestStation;
+    });
+
+    if (mobileInput.action) {
+      mobileInput.action = false;
+      tryInteract();
+    }
+
+    // Fornos
+    stationObjects.forEach((station) => {
+      const oven = station.oven;
+      if (!oven?.item || oven.item.burnt) return;
+
+      oven.elapsed += dt;
+      if (oven.elapsed >= OVEN_COOK_TIME + OVEN_BURN_TIME) {
+        oven.item.burnt = true;
+        playSfx("error");
+        stationFeedback(station, "QUEIMOU!", RED, 20);
+      }
+    });
+
+    // Pedidos
+    spawnTimer += dt;
+    if (spawnTimer >= levelConfig.spawnInterval || orders.length === 0) {
+      spawnTimer = 0;
+      generateOrder();
+    }
+
+    for (let i = orders.length - 1; i >= 0; i--) {
+      orders[i].timeLeft -= dt;
+
+      if (orders[i].timeLeft <= 0) {
+        orders.splice(i, 1);
+        combo = 0;
+        playSfx("error");
+        k.shake(15);
+        showFeedback("PEDIDO PERDIDO!", k.vec2(KITCHEN_RIGHT / 2, 250), {
+          color: RED,
+          size: 28,
+          duration: 1.5,
+        });
+      }
+    }
+
+    // Tempo
+    gameTime -= dt;
+    updateHud();
+
+    if (gameTime <= 0) endLevel();
+  });
+});
+
+// ==================== LEVEL COMPLETE SCENE ====================
+k.scene("levelcomplete", (data) => {
+  enterScene({ inGame: false });
+  addBackdrop();
+
+  const isFinalLevel = data.level >= LEVELS.length;
+  let transitioning = false;
+  const goTo = (scene, args) => {
     if (transitioning) return;
     transitioning = true;
-    k.go("menu");
+    k.go(scene, args);
+  };
+
+  if (!isFinalLevel) {
+    playSfx("levelComplete");
+    addPanel(560, 420, k.vec2(GAME_WIDTH / 2, 250));
+    addLabel(`NÍVEL ${data.level} CONCLUÍDO!`, k.vec2(GAME_WIDTH / 2, 78), {
+      size: 34,
+      color: GREEN,
+    });
+    const levelStars = data.stars[data.stars.length - 1];
+    addStars(levelStars, 140);
+
+    addLabel(
+      `Receitas entregues: ${data.completedRecipes}`,
+      k.vec2(GAME_WIDTH / 2, 195),
+      {
+        size: 20,
+        color: BLUE,
+      },
+    );
+    addLabel(`Pontos do nível: ${data.score}`, k.vec2(GAME_WIDTH / 2, 228), {
+      size: 20,
+    });
+    addLabel(`Total: ${data.totalScore}`, k.vec2(GAME_WIDTH / 2, 268), {
+      size: 30,
+      color: ORANGE,
+    });
+
+    if (levelStars < STAR_THRESHOLDS.length) {
+      const missing = STAR_THRESHOLDS[levelStars] - data.completedRecipes;
+      addLabel(
+        `Faltou ${missing} receita${missing > 1 ? "s" : ""} para ${starRow(levelStars + 1)}`,
+        k.vec2(GAME_WIDTH / 2, 305),
+        { size: 16 },
+      );
+    }
+
+    const nextLevel = {
+      level: data.level + 1,
+      totalScore: data.totalScore,
+      stars: data.stars,
+    };
+    const goNextLevel = () => goTo("game", nextLevel);
+
+    let countdown = 8;
+    const nextButton = addButton(
+      `NÍVEL ${data.level + 1} (${countdown})`,
+      k.vec2(GAME_WIDTH / 2, 360),
+      goNextLevel,
+      { width: 280 },
+    );
+    k.loop(1, () => {
+      countdown--;
+      nextButton.label.text = `NÍVEL ${data.level + 1} (${countdown})`;
+      if (countdown <= 0) goNextLevel();
+    });
+
+    if (!isMobile) {
+      addLabel(
+        "ESPAÇO - Continuar  ·  ESC - Menu",
+        k.vec2(GAME_WIDTH / 2, 425),
+        {
+          size: 15,
+          color: GRAY,
+        },
+      );
+    }
+
+    k.onKeyPress("space", goNextLevel);
+    k.onKeyPress("enter", goNextLevel);
+    k.onKeyPress("escape", () => goTo("menu"));
+    return;
+  }
+
+  // Completou todos os níveis!
+  playSfx("victory");
+  const CONFETTI_COLORS = [ORANGE, GREEN, RED, YELLOW, BLUE, PURPLE];
+  k.loop(0.06, () => {
+    k.add([
+      k.rect(8, 12),
+      k.pos(k.rand(0, GAME_WIDTH), -10),
+      k.anchor("center"),
+      k.color(k.choose(CONFETTI_COLORS)),
+      k.rotate(k.rand(0, 360)),
+      k.move(k.vec2(k.rand(-0.3, 0.3), 1), k.rand(120, 220)),
+      k.opacity(1),
+      k.lifespan(4),
+      k.z(5),
+      {
+        spin: k.rand(-360, 360),
+        update() {
+          this.angle += this.spin * k.dt();
+        },
+      },
+    ]);
   });
+
+  addPanel(600, 440, k.vec2(GAME_WIDTH / 2, 250));
+  addLabel("🏆 VOCÊ VENCEU! 🏆", k.vec2(GAME_WIDTH / 2, 70), {
+    size: 40,
+    color: YELLOW,
+  });
+  addLabel("Todos os níveis concluídos", k.vec2(GAME_WIDTH / 2, 112), {
+    size: 20,
+  });
+
+  data.stars.forEach((count, i) => {
+    addLabel(
+      `Nível ${i + 1}  ${starRow(count)}`,
+      k.vec2(GAME_WIDTH / 2, 152 + i * 32),
+      {
+        size: 20,
+      },
+    );
+  });
+
+  const earnedStars = data.stars.reduce((sum, count) => sum + count, 0);
+  const maxStars = LEVELS.length * STAR_THRESHOLDS.length;
+  addLabel(
+    `Estrelas: ${earnedStars}/${maxStars}`,
+    k.vec2(GAME_WIDTH / 2, 260),
+    {
+      size: 18,
+      color: YELLOW,
+    },
+  );
+  addLabel(`Pontuação Total: ${data.totalScore}`, k.vec2(GAME_WIDTH / 2, 298), {
+    size: 32,
+    color: ORANGE,
+  });
+
+  const { highScore, isNew } = saveHighScore(data.totalScore);
+  addLabel(
+    isNew ? "🎉 NOVO RECORDE! 🎉" : `Recorde: ${highScore}`,
+    k.vec2(GAME_WIDTH / 2, 338),
+    {
+      size: 20,
+      color: isNew ? WHITE : GRAY,
+    },
+  );
+
+  const goMenu = () => goTo("menu");
+  addButton("MENU", k.vec2(GAME_WIDTH / 2, 400), goMenu);
+
+  k.onKeyPress("space", goMenu);
+  k.onKeyPress("enter", goMenu);
+  k.onKeyPress("escape", goMenu);
 });
 
 // ==================== GAME OVER SCENE (with jumpscare) ====================
 k.scene("gameover", (data) => {
-  let transitioning = false;
-  playSfx("error", { allowOverlap: false });
+  enterScene({ inGame: false });
+  playSfx("error");
+  playScreech();
 
   // ---- JUMPSCARE PHASE ----
-  // Black background
-  const jumpBg = k.add([
-    k.rect(k.width(), k.height()),
-    k.pos(0, 0),
-    k.color(0, 0, 0),
-    k.z(500),
+  const jumpscare = k.add([k.z(500)]);
+  jumpscare.add([k.rect(GAME_WIDTH, GAME_HEIGHT), k.color(BLACK)]);
+
+  const face = jumpscare.add([
+    k.pos(GAME_WIDTH / 2, GAME_HEIGHT / 2),
+    k.scale(2),
+    {
+      draw() {
+        drawFreddy({ scary: true, bob: Math.sin(k.time() * 50) * 0.4 });
+      },
+    },
   ]);
 
-  // Scary Freddy face
-  const jumpFace = k.add([
-    k.text("🐻", { size: isMobile ? 180 : 250 }),
-    k.pos(k.center()),
-    k.anchor("center"),
-    k.z(501),
-    k.opacity(1),
-  ]);
+  // Cresce para cima da tela, mantendo o rosto no centro
+  k.tween(
+    2,
+    10,
+    0.3,
+    (s) => {
+      face.scale = k.vec2(s);
+      face.pos = k.vec2(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 15 * s);
+    },
+    k.easings.easeOutQuad,
+  );
 
-  // GAME OVER text on top
-  const jumpText = k.add([
-    k.text("GAME OVER", { size: isMobile ? 48 : 64 }),
-    k.pos(k.center().x, k.center().y + (isMobile ? 130 : 160)),
-    k.anchor("center"),
-    k.color(255, 0, 0),
-    k.z(501),
-  ]);
-
-  // Shake effect during jumpscare
+  k.flash(RED, 0.4);
   k.shake(40);
 
-  // After 1.5 seconds, remove jumpscare and show results
-  k.wait(1.5, () => {
-    jumpBg.destroy();
-    jumpFace.destroy();
-    jumpText.destroy();
+  k.wait(0.5, () => {
+    jumpscare.add([
+      k.text("GAME OVER", { size: 64, font: "pixel-big" }),
+      k.pos(GAME_WIDTH / 2, GAME_HEIGHT - 60),
+      k.anchor("center"),
+      k.color(RED),
+    ]);
+  });
 
-    showGameOverResults(data, transitioning, (t) => {
-      transitioning = t;
-    });
+  // After 1.6 seconds, remove jumpscare and show results
+  k.wait(1.6, () => {
+    jumpscare.destroy();
+    showGameOverResults(data);
   });
 });
 
-function showGameOverResults(data, transitioning, setTransitioning) {
-  let title = "TEMPO ESGOTADO!";
-  let titleColor = k.rgb(255, 0, 0);
+function showGameOverResults(data) {
+  addBackdrop({ dim: 0.6 });
+  addPanel(560, 400, k.vec2(GAME_WIDTH / 2, 250));
 
-  if (data.reason === "TEMPO_ESGOTADO") {
-    title = "⏰ TEMPO ESGOTADO! ⏰";
-  }
+  addLabel("⏰ TEMPO ESGOTADO! ⏰", k.vec2(GAME_WIDTH / 2, 90), {
+    size: 34,
+    color: RED,
+  });
+  addLabel(`NÍVEL ${data.level}`, k.vec2(GAME_WIDTH / 2, 140), {
+    size: 22,
+    color: PURPLE,
+  });
+  addLabel(
+    `Receitas: ${data.completedRecipes}  ·  precisa de ${STAR_THRESHOLDS[0]} para ⭐`,
+    k.vec2(GAME_WIDTH / 2, 178),
+    { size: 20 },
+  );
 
-  k.add([
-    k.text(title, { size: isMobile ? 30 : 36 }),
-    k.pos(k.center().x, isMobile ? 100 : 150),
-    k.anchor("center"),
-    k.color(titleColor),
-  ]);
+  const runScore = data.previousScore + data.score;
+  addLabel(`Pontuação: ${runScore}`, k.vec2(GAME_WIDTH / 2, 222), {
+    size: 28,
+    color: ORANGE,
+  });
 
-  k.add([
-    k.text(`NÍVEL ${data.level}`, { size: isMobile ? 18 : 20 }),
-    k.pos(k.center().x, isMobile ? 150 : 210),
-    k.anchor("center"),
-    k.color(200, 100, 255),
-  ]);
+  const { highScore, isNew } = saveHighScore(runScore);
+  addLabel(
+    isNew ? "🎉 RECORDE! 🎉" : `Recorde: ${highScore}`,
+    k.vec2(GAME_WIDTH / 2, 262),
+    {
+      size: 20,
+      color: isNew ? WHITE : GRAY,
+    },
+  );
 
-  k.add([
-    k.text(`Pontuação: ${data.score}`, { size: isMobile ? 24 : 28 }),
-    k.pos(k.center().x, isMobile ? 200 : 270),
-    k.anchor("center"),
-    k.color(255, 165, 0),
-  ]);
-
-  const highScore = k.getData("highScore", 0);
-  if (data.score > highScore) {
-    k.setData("highScore", data.score);
-    k.add([
-      k.text("🎉 RECORDE! 🎉", { size: isMobile ? 22 : 24 }),
-      k.pos(k.center().x, isMobile ? 250 : 320),
-      k.anchor("center"),
-      k.color(76, 175, 80),
-    ]);
-  } else {
-    k.add([
-      k.text(`Recorde: ${highScore}`, { size: isMobile ? 18 : 20 }),
-      k.pos(k.center().x, isMobile ? 250 : 320),
-      k.anchor("center"),
-    ]);
-  }
-
-  const retryData = {
-    level: data.level,
-    difficulty:
-      data.level === 1 ? "easy" : data.level === 2 ? "normal" : "hard",
-    maxTime: data.level === 1 ? 180 : data.level === 2 ? 150 : 120,
-  };
-
-  const retryLevel = () => {
+  let transitioning = false;
+  const goTo = (scene, args) => {
     if (transitioning) return;
     transitioning = true;
-    setTransitioning(true);
-    k.go("game", retryData);
+    k.go(scene, args);
   };
 
-  const goMenu = () => {
-    if (transitioning) return;
-    transitioning = true;
-    setTransitioning(true);
-    k.go("menu");
-  };
+  const retryLevel = () =>
+    goTo("game", {
+      level: data.level,
+      totalScore: data.previousScore,
+      stars: data.stars,
+    });
+  const goMenu = () => goTo("menu");
 
-  k.add([
-    k.text(isMobile ? "Toque para repetir" : "ESPAÇO - Repetir nível", {
-      size: isMobile ? 16 : 16,
-    }),
-    k.pos(k.center().x, k.height() - (isMobile ? 100 : 130)),
-    k.anchor("center"),
-  ]);
+  addButton("TENTAR DE NOVO", k.vec2(GAME_WIDTH / 2 - 125, 340), retryLevel, {
+    width: 230,
+  });
+  addButton("MENU", k.vec2(GAME_WIDTH / 2 + 125, 340), goMenu, {
+    width: 200,
+    color: k.rgb(90, 84, 120),
+  });
 
   if (!isMobile) {
-    k.add([
-      k.text("ESC - Menu principal", { size: 14 }),
-      k.pos(k.center().x, k.height() - 90),
-      k.anchor("center"),
-      k.color(200, 200, 200),
-    ]);
+    addLabel("ESPAÇO - Repetir  ·  ESC - Menu", k.vec2(GAME_WIDTH / 2, 405), {
+      size: 15,
+      color: GRAY,
+    });
   }
 
   k.onKeyPress("space", retryLevel);
+  k.onKeyPress("enter", retryLevel);
   k.onKeyPress("escape", goMenu);
-  k.onClick(retryLevel);
-
-  if (isMobile) {
-    k.onTouchStart(retryLevel);
-  }
 }
 
 // ==================== START ====================
+updateOrientation();
 k.go("menu");
